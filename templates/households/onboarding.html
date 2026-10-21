@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Tu hogar{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <h1>Únete o crea un hogar</h1>
+  <form method="post">
+    {% csrf_token %}
+    <label for="household_name">Nombre del hogar</label>
+    <input class="field-input" id="household_name" name="household_name" maxlength="120">
+    <label for="invite_token">O pega el código de invitación</label>
+    <input class="field-input" id="invite_token" name="invite_token">
+    <button class="button" type="submit">Continuar</button>
+  </form>
+</section>
+{% endblock %}

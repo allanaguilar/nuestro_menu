@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Menú del {{ week_start|date:"j M" }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Semana del {{ week_start|date:"j M Y" }} al {{ week_end|date:"j M Y" }}</p>
+    <h1>Menú semanal</h1>
+  </div>
+  <div class="week-nav">
+    <a class="button button-secondary" href="{% url 'meal_plans:week' week_start=prev_week|date:'Y-m-d' %}">Semana anterior</a>
+    <a class="button button-secondary" href="{% url 'meal_plans:current' %}">Hoy</a>
+    <a class="button button-secondary" href="{% url 'meal_plans:week' week_start=next_week|date:'Y-m-d' %}">Semana siguiente</a>
+  </div>
+</div>
+
+<div class="toolbar">
+  {% if plan %}
+    <span class="status status-{{ plan.status }}">{% if plan.status == 'approved' %}Aprobado{% else %}Borrador{% endif %}</span>
+  {% else %}
+    <span class="status status-draft">Sin menú</span>
+  {% endif %}
+  <form method="post" action="{% url 'meal_plans:generate' week_start=week_start|date:'Y-m-d' %}">
+    {% csrf_token %}
+    {% if plan and plan.status == 'approved' %}
+    <input type="hidden" name="confirm_replace" value="1">
+    <button class="button" type="submit" data-confirm="El menú aprobado se sustituirá por un borrador. ¿Continuar?">Regenerar</button>
+    {% else %}
+    <button class="button" type="submit">Generar menú</button>
+    {% endif %}
+  </form>
+  {% if plan and plan.entries.count == 7 and plan.status != 'approved' %}
+  <form method="post" action="{% url 'meal_plans:approve' week_start=week_start|date:'Y-m-d' %}">
+    {% csrf_token %}
+    <button class="button button-accent" type="submit" data-confirm="¿Aprobar este menú para el historial?">Aprobar</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if recipe_count < 7 %}
+<p class="notice">Hay {{ recipe_count }} recetas activas. El generador necesita siete distintas.</p>
+{% endif %}
+
+<div class="day-list">
+  {% for item in days %}
+  <article class="panel">
+    <header class="panel-head">
+      <h2>{{ item.label }}</h2>
+      <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"j M" }}</time>
+    </header>
+    {% if item.entry %}
+      <p class="dish">{{ item.entry.recipe.name }}</p>
+      <p class="tag">{{ item.entry.recipe.get_category_display }} · {% if item.entry.selection_source == 'manual' %}elegido a mano{% else %}propuesto{% endif %}</p>
+    {% else %}
+      <p class="dish dish-empty">Todavía no hay plato</p>
+    {% endif %}
+    {% if plan %}
+    <form class="inline-form" method="post" action="{% url 'meal_plans:change' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
+      {% csrf_token %}
+      <label class="sr-only" for="id_recipe_{{ item.date|date:'Y-m-d' }}">Cambiar plato del {{ item.label }}</label>
+      {{ item.form.recipe }}
+      <button class="button button-secondary" type="submit">Cambiar</button>
+    </form>
+    <form method="post" action="{% url 'meal_plans:alternative' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
+      {% csrf_token %}
+      <button class="button button-ghost" type="submit">Proponer alternativa</button>
+    </form>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Recetario{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Recetario</h1>
+  <a class="button" href="{% url 'recipes:create' %}">Nueva receta</a>
+</div>
+<form class="filters" method="get">
+  <label for="id_q">Buscar</label>
+  <input class="field-input" id="id_q" type="search" name="q" value="{{ query }}" placeholder="Lentejas, pollo…">
+  <label for="id_categoria">Categoría</label>
+  <select class="field-input" id="id_categoria" name="categoria">
+    <option value="">Todas</option>
+    {% for value, label in categories %}
+    <option value="{{ value }}" {% if selected_category == value %}selected{% endif %}>{{ label }}</option>
+    {% endfor %}
+  </select>
+  <label for="id_orden">Orden</label>
+  <select class="field-input" id="id_orden" name="orden">
+    <option value="name" {% if sort == 'name' %}selected{% endif %}>Nombre</option>
+    <option value="recent" {% if sort == 'recent' %}selected{% endif %}>Más recientes</option>
+  </select>
+  <label class="check">
+    <input type="checkbox" name="archivo" value="1" {% if include_archived %}checked{% endif %}>
+    Incluir archivadas
+  </label>
+  <button class="button" type="submit">Filtrar</button>
+</form>
+
+{% if recipes %}
+<ul class="recipe-list">
+  {% for recipe in recipes %}
+  <li class="panel recipe-item">
+    <div>
+      <h2>{{ recipe.name }}</h2>
+      <p class="tag">{{ recipe.get_category_display }}{% if recipe.prep_time_minutes %} · {{ recipe.prep_time_minutes }} min{% endif %}{% if not recipe.is_active %} · archivada{% endif %}</p>
+      {% if recipe.notes %}<p class="muted">{{ recipe.notes|truncatewords:18 }}</p>{% endif %}
+    </div>
+    <div class="recipe-actions">
+      <a class="button button-secondary" href="{% url 'recipes:update' recipe.pk %}">Editar</a>
+      <form method="post" action="{% url 'recipes:favorite' recipe.pk %}">
+        {% csrf_token %}
+        <button class="button button-ghost" type="submit">
+          {% if recipe.id in favorite_ids %}Quitar favorita{% else %}Marcar favorita{% endif %}
+        </button>
+      </form>
+      <form method="post" action="{% url 'recipes:archive' recipe.pk %}">
+        {% csrf_token %}
+        <button class="button button-ghost" type="submit">{% if recipe.is_active %}Archivar{% else %}Reactivar{% endif %}</button>
+      </form>
+    </div>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>No hay recetas con esos filtros. Empieza creando la primera.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Historial{% endblock %}
+{% block content %}
+<h1>Historial de menús</h1>
+<p class="lede">Los menús aprobados se usan como aproximación de lo que se ha comido.</p>
+{% if plans %}
+<ul class="history-list">
+  {% for plan in plans %}
+  <li class="panel">
+    <a href="{% url 'meal_plans:week' week_start=plan.week_start|date:'Y-m-d' %}">
+      Semana del {{ plan.week_start|date:"j M Y" }}
+    </a>
+    <span class="status status-{{ plan.status }}">{% if plan.status == 'approved' %}Aprobado{% else %}Borrador{% endif %}</span>
+    <p class="muted">{{ plan.entry_count }} almuerzos</p>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Aún no hay semanas guardadas.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<section class="auth-card wide">
+  <h1>{{ title }}</h1>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      {% if field.name == "confirm_duplicate" %}
+        <label class="check">{{ field }} {{ field.label }}</label>
+      {% else %}
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+      {% endif %}
+      {{ field.errors }}
+    {% endfor %}
+    <button class="button" type="submit">Guardar</button>
+    <a class="button button-secondary" href="{% url 'recipes:list' %}">Cancelar</a>
+  </form>
+</section>
+{% endblock %}

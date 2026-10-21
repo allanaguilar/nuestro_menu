@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Crear cuenta · Nuestro Menú{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <h1>Crear cuenta</h1>
+  <p class="lede">El primero crea el hogar. El segundo entra con un enlace de invitación.</p>
+  <form method="post" novalidate hx-boost="false">
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    {% for field in form %}
+      {% if field.is_hidden %}
+        {{ field }}
+      {% else %}
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<p class="hint">{{ field.help_text }}</p>{% endif %}
+        {{ field.errors }}
+      {% endif %}
+    {% endfor %}
+    <button class="button" type="submit">Crear cuenta</button>
+  </form>
+  <p>¿Ya tienes cuenta? <a href="{% url 'login' %}">Entrar</a></p>
+</section>
+{% endblock %}

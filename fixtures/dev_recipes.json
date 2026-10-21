@@ -1,0 +1,15 @@
+[
+  {
+    "model": "recipes.recipe",
+    "pk": "11111111-1111-1111-1111-111111111101",
+    "fields": {
+      "household": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+      "name": "Lentejas estofadas",
+      "normalized_name": "lentejas estofadas",
+      "category": "legumbres",
+      "prep_time_minutes": 60,
+      "notes": "Solo para desarrollo.",
+      "is_active": true
+    }
+  }
+]

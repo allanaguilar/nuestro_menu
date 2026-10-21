@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Hogar{% endblock %}
+{% block content %}
+<h1>Ajustes del hogar</h1>
+<form method="post" class="auth-card wide">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button class="button" type="submit">Guardar nombre</button>
+</form>
+
+<section>
+  <h2>Personas</h2>
+  <ul class="history-list">
+    {% for member in members %}
+    <li class="panel">
+      <strong>{{ member.user.first_name|default:member.user.username }}</strong>
+      <span class="tag">{{ member.get_role_display }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section>
+  <h2>Invitar a la otra persona</h2>
+  <p>Crea un enlace de un solo uso (caduca a los 7 días) y envíaselo por el medio que prefieras. No hace falta correo.</p>
+  {% if is_owner %}
+  <form method="post" action="{% url 'households:create_invite' %}">
+    {% csrf_token %}
+    <button class="button" type="submit">Crear invitación</button>
+  </form>
+  {% if invite_url %}
+  <p class="notice">Enlace activo: <code>{{ invite_url }}</code></p>
+  {% endif %}
+  {% else %}
+  <p>Solo quien creó el hogar puede generar invitaciones.</p>
+  {% endif %}
+</section>
+{% endblock %}

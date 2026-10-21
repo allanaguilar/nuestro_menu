@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Entrar · Nuestro Menú{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <h1>Entrar</h1>
+  <p class="lede">Organiza los almuerzos de la semana con quien comparte casa.</p>
+  <form method="post" novalidate hx-boost="false">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+    <div class="error-list">{{ form.non_field_errors }}</div>
+    {% endif %}
+    <label for="id_username">Usuario</label>
+    {{ form.username }}
+    <label for="id_password">Contraseña</label>
+    {{ form.password }}
+    <button class="button" type="submit">Entrar</button>
+  </form>
+  <p><a href="{% url 'password_reset' %}">¿Has olvidado la contraseña?</a></p>
+  <p>¿Aún no tienes cuenta? <a href="{% url 'signup' %}">Crear hogar</a></p>
+</section>
+{% endblock %}

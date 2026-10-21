@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Preferencias{% endblock %}
+{% block content %}
+<h1>Preferencias</h1>
+<p class="lede">Cada persona marca favoritos, puntuación y platos que prefiere evitar. Si alguien evita una receta, el generador no la propone.</p>
+{% if rows %}
+<ul class="preference-list">
+  {% for row in rows %}
+  <li class="panel">
+    <h2>{{ row.recipe.name }}</h2>
+    <p class="tag">{{ row.recipe.get_category_display }}</p>
+    <form method="post" class="pref-form">
+      {% csrf_token %}
+      <input type="hidden" name="recipe_id" value="{{ row.recipe.id }}">
+      {{ row.form.rating.label_tag }}
+      {{ row.form.rating }}
+      <label class="check">{{ row.form.is_favorite }} {{ row.form.is_favorite.label }}</label>
+      <label class="check">{{ row.form.is_avoided }} {{ row.form.is_avoided.label }}</label>
+      <button class="button" type="submit">Guardar</button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p>Primero añade recetas al recetario.</p>
+{% endif %}
+{% endblock %}
