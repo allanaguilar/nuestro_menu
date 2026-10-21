@@ -10,12 +10,14 @@ from apps.api.views import (
     MealPlanGenerateView,
     MealPlanHistoryView,
     PreferenceListView,
+    RecipeBulkImportView,
     RecipeDetailView,
     RecipeListCreateView,
 )
 
 urlpatterns = [
     path("recipes/", RecipeListCreateView.as_view()),
+    path("recipes/import/", RecipeBulkImportView.as_view()),
     path("recipes/<uuid:pk>/", RecipeDetailView.as_view()),
     path("meal-plans/", MealPlanHistoryView.as_view()),
     path("meal-plans/<slug:week_start>/", MealPlanDetailView.as_view()),

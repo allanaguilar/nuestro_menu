@@ -29,6 +29,7 @@ from apps.preferences.serializers import RecipePreferenceSerializer
 from apps.recipes.models import Recipe
 from apps.recipes.selectors import recipes_for_household, search_recipes
 from apps.recipes.serializers import RecipeSerializer
+from apps.recipes.services import import_recipes_from_text, parse_recipe_import_text
 
 
 def parse_week(value):
@@ -65,6 +66,27 @@ class RecipeListCreateView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+class RecipeBulkImportView(APIView):
+    permission_classes = [HasHousehold]
+
+    def post(self, request):
+        household = household_from_request(request)
+        text = request.data.get("text", "")
+        if not isinstance(text, str) or not parse_recipe_import_text(text):
+            return Response(
+                {"detail": "Envía text con una receta por línea."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        result = import_recipes_from_text(household, text)
+        payload = {
+            "created": RecipeSerializer(result.created, many=True).data,
+            "skipped": result.skipped,
+            "errors": result.errors,
+        }
+        code = status.HTTP_201_CREATED if result.created else status.HTTP_200_OK
+        return Response(payload, status=code)
 
 
 class RecipeDetailView(APIView):

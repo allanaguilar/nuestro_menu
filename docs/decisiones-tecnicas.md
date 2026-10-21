@@ -41,6 +41,6 @@ El service worker cachea solo estáticos y la página `/offline/`. Las respuesta
 
 ## Fuera de alcance
 
-- Importación de WhatsApp, TXT o CSV.
+- Importación de chats de WhatsApp o archivos CSV. Sí hay pegado de lista en Recetario.
 - Desayunos y cenas.
 - Despliegue real en este momento (solo local, a petición).

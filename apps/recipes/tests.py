@@ -3,6 +3,7 @@ from django.test import TestCase
 
 from apps.households.services import create_household_for_user
 from apps.recipes.models import Recipe
+from apps.recipes.services import guess_recipe_category, import_recipes_from_text
 from apps.recipes.utils import normalize_recipe_name
 
 
@@ -65,3 +66,64 @@ class RecipeTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "nombre equivalente")
+
+
+class RecipeImportTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("allan", password="clave-segura-1")
+        self.other = User.objects.create_user("vecino", password="clave-segura-1")
+        self.household = create_household_for_user(self.user, "Casa")
+        self.other_home = create_household_for_user(self.other, "Otra")
+        Recipe.objects.create(
+            household=self.household, name="Lentejas", category=Recipe.Category.LEGUMBRES
+        )
+
+    def test_guesses_category_from_name(self):
+        self.assertEqual(guess_recipe_category("Pasta con carne"), Recipe.Category.PASTA)
+        self.assertEqual(guess_recipe_category("Crema de calabaza"), Recipe.Category.VERDURAS)
+        self.assertEqual(guess_recipe_category("Salmón con verduras"), Recipe.Category.PESCADO)
+        self.assertEqual(guess_recipe_category("Patatas a la riojana"), Recipe.Category.OTROS)
+
+    def test_skips_existing_names(self):
+        result = import_recipes_from_text(
+            self.household,
+            "lentejas\nPatatas a la riojana\n• Garbanzos | legumbres",
+        )
+        self.assertEqual([recipe.name for recipe in result.created], ["Patatas a la riojana", "Garbanzos"])
+        self.assertEqual(result.skipped, ["lentejas"])
+
+    def test_web_import_creates_recipes(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        response = self.client.post(
+            "/recetas/importar/",
+            {"text": "Arroz cremoso\nHuevo frito | huevos"},
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Se han importado 2 recetas")
+        self.assertTrue(
+            Recipe.objects.filter(household=self.household, normalized_name="arroz cremoso").exists()
+        )
+        self.assertEqual(
+            Recipe.objects.get(household=self.household, normalized_name="huevo frito").category,
+            Recipe.Category.HUEVOS,
+        )
+
+    def test_import_stays_in_own_household(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        self.client.post("/recetas/importar/", {"text": "Gazpacho"})
+        self.assertTrue(Recipe.objects.filter(household=self.household, normalized_name="gazpacho").exists())
+        self.assertFalse(Recipe.objects.filter(household=self.other_home, normalized_name="gazpacho").exists())
+
+    def test_api_import(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        response = self.client.post(
+            "/api/recipes/import/",
+            {"text": "Chuleta\nLentejas"},
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(len(data["created"]), 1)
+        self.assertEqual(data["skipped"], ["Lentejas"])
+        self.assertEqual(data["created"][0]["category"], Recipe.Category.CARNE)

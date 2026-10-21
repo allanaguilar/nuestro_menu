@@ -2,6 +2,7 @@ from django import forms
 
 from apps.recipes.models import Recipe
 from apps.recipes.selectors import find_duplicates
+from apps.recipes.services import parse_recipe_import_text
 
 
 class RecipeForm(forms.ModelForm):
@@ -54,3 +55,31 @@ class RecipeForm(forms.ModelForm):
         if commit:
             recipe.save()
         return recipe
+
+
+class RecipeImportForm(forms.Form):
+    text = forms.CharField(
+        label="Lista de recetas",
+        widget=forms.Textarea(
+            attrs={
+                "rows": 16,
+                "class": "field-input import-text",
+                "placeholder": "Patatas a la riojana\nPasta con carne | pasta\nSalmón con verduras | pescado | Airfryer",
+            }
+        ),
+        help_text=(
+            "Una receta por línea. Opcional: Nombre | categoría | notas. "
+            "Si no pones categoría, se infiere por el nombre."
+        ),
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        css = self.fields["text"].widget.attrs.get("class", "")
+        self.fields["text"].widget.attrs["class"] = f"{css} field-input".strip()
+
+    def clean_text(self):
+        text = self.cleaned_data["text"]
+        if not parse_recipe_import_text(text):
+            raise forms.ValidationError("No hay recetas que importar. Escribe una por línea.")
+        return text

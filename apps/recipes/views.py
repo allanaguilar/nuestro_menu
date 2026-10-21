@@ -2,15 +2,15 @@ from django.contrib import messages
 from django.shortcuts import redirect
 from django.urls import reverse
 from django.views import View
-from django.views.generic import CreateView, ListView, UpdateView
+from django.views.generic import CreateView, FormView, ListView, UpdateView
 
 from apps.core.mixins import HouseholdRequiredMixin, get_owned_or_404
 from apps.preferences.selectors import preference_map
 from apps.preferences.services import toggle_favorite
-from apps.recipes.forms import RecipeForm
+from apps.recipes.forms import RecipeForm, RecipeImportForm
 from apps.recipes.models import Recipe
 from apps.recipes.selectors import recipes_for_household, search_recipes
-from apps.recipes.services import archive_recipe, reactivate_recipe
+from apps.recipes.services import archive_recipe, import_recipes_from_text, reactivate_recipe
 
 
 class RecipeListView(HouseholdRequiredMixin, ListView):
@@ -61,6 +61,26 @@ class RecipeCreateView(HouseholdRequiredMixin, CreateView):
         context = super().get_context_data(**kwargs)
         context["title"] = "Nueva receta"
         return context
+
+
+class RecipeImportView(HouseholdRequiredMixin, FormView):
+    template_name = "recipes/import.html"
+    form_class = RecipeImportForm
+
+    def form_valid(self, form):
+        result = import_recipes_from_text(self.request.household, form.cleaned_data["text"])
+        for error in result.errors:
+            messages.error(self.request, error)
+        if result.errors and not result.created and not result.skipped:
+            return self.form_invalid(form)
+        parts = []
+        if result.created:
+            parts.append(f"Se han importado {len(result.created)} recetas")
+        if result.skipped:
+            parts.append(f"{len(result.skipped)} ya existían y no se han duplicado")
+        if parts:
+            messages.success(self.request, ". ".join(parts) + ".")
+        return redirect("recipes:list")
 
 
 class RecipeUpdateView(HouseholdRequiredMixin, UpdateView):

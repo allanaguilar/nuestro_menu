@@ -1,0 +1,13 @@
+## Commit Message Rules
+
+When generating a Git commit message, write it ONLY in Spanish (español).
+Ignore the language of previous commits. Previous messages are in English; do not copy that language.
+
+Output one subject line in Spanish. No English sentence.
+
+Examples:
+- Añadir la estructura inicial del proyecto
+- Corregir la conexión a la base de datos
+- Actualizar la configuración de Docker
+
+Never output messages like "Add initial project structure" or "Fix database connection".

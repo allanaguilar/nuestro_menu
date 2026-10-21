@@ -61,6 +61,7 @@ h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
 .button-secondary { background: var(--bg-accent); color: var(--ink); }
 .button-accent { background: var(--terracotta); }
 .button-ghost { background: transparent; color: var(--olive-dark); border: 1px solid var(--line); }
+.import-text { min-height: 16rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.95rem; }
 .field-input, input[type="text"], input[type="password"], input[type="email"], input[type="search"], textarea, select {
   width: 100%; padding: 0.7rem 0.85rem; border-radius: 12px; border: 1px solid var(--line);
   background: #fff; font: inherit; min-height: 44px;

@@ -10,7 +10,7 @@ Desde la carpeta MISAPPS:
 cd nuestro_menu
 ```
 
-No hay desayunos ni cenas en esta versión. Las recetas se introducen a mano; no hay importación de chats ni archivos de conversación.
+No hay desayunos ni cenas en esta versión. Las recetas se introducen a mano o pegando una lista en Recetario; no hay importación de chats de WhatsApp.
 
 ## Arquitectura
 
@@ -95,7 +95,7 @@ Cada receta, preferencia y menú queda aislado por hogar. No se pueden adivinar 
 
 ## Recetario y preferencias
 
-Alta, edición, búsqueda, filtro por categoría, orden por nombre o fecha, archivo (sin borrar) y reactivación. Si el nombre coincide ignorando mayúsculas y espacios, se pide confirmación; no se fusionan recetas solas.
+Alta, edición, importación por lista (una receta por línea), búsqueda, filtro por categoría, orden por nombre o fecha, archivo (sin borrar) y reactivación. Si el nombre coincide ignorando mayúsculas y espacios, se pide confirmación; no se fusionan recetas solas. `POST /api/recipes/import/` acepta `{"text": "..."}`.
 
 Las recetas evitadas por **cualquier** miembro no entran en el generador.
 
@@ -114,6 +114,7 @@ En **Instalar** hay instrucciones para Android (Chrome) e iPhone (Safari → Añ
 Sesión + CSRF. Ejemplos:
 
 - `GET/POST /api/recipes/`
+- `POST /api/recipes/import/`
 - `GET/PATCH /api/recipes/{id}/`
 - `GET /api/meal-plans/{week_start}/`
 - `POST /api/meal-plans/{week_start}/generate/`

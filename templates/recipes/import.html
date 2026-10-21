@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Importar recetas{% endblock %}
+{% block content %}
+<section class="auth-card wide">
+  <h1>Importar recetas</h1>
+  <p class="lede">Pega una lista, una receta por línea. Se guardan en este hogar y no se duplican nombres equivalentes.</p>
+  <p class="hint">Formato: <code>Nombre</code> o <code>Nombre | categoría | notas</code>. Categorías: legumbres, carne, pescado, pasta, arroz, verduras, huevos, otros.</p>
+  <form method="post" novalidate>
+    {% csrf_token %}
+    {{ form.non_field_errors }}
+    <label for="{{ form.text.id_for_label }}">{{ form.text.label }}</label>
+    {{ form.text }}
+    {% if form.text.help_text %}<p class="hint">{{ form.text.help_text }}</p>{% endif %}
+    {{ form.text.errors }}
+    <button class="button" type="submit">Importar</button>
+    <a class="button button-secondary" href="{% url 'recipes:list' %}">Cancelar</a>
+  </form>
+</section>
+{% endblock %}
