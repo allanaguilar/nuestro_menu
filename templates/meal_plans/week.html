@@ -42,29 +42,33 @@
 
 <div class="day-list">
   {% for item in days %}
-  <article class="panel">
-    <header class="panel-head">
-      <h2>{{ item.label }}</h2>
+  <article class="day-rail{% if item.is_today %} is-today{% endif %}">
+    <div class="day-rail-when">
+      <h2 class="day-rail-short"><abbr title="{{ item.label }}">{{ item.short }}</abbr></h2>
       <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"j M" }}</time>
-    </header>
-    {% if item.entry %}
-      <p class="dish">{{ item.entry.recipe.name }}</p>
-      <p class="tag">{{ item.entry.recipe.get_category_display }} · {% if item.entry.selection_source == 'manual' %}elegido a mano{% else %}propuesto{% endif %}</p>
-    {% else %}
-      <p class="dish dish-empty">Todavía no hay plato</p>
-    {% endif %}
-    {% if plan %}
-    <form class="inline-form" method="post" action="{% url 'meal_plans:change' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
-      {% csrf_token %}
-      <label class="sr-only" for="id_recipe_{{ item.date|date:'Y-m-d' }}">Cambiar plato del {{ item.label }}</label>
-      {{ item.form.recipe }}
-      <button class="button button-secondary" type="submit">Cambiar</button>
-    </form>
-    <form method="post" action="{% url 'meal_plans:alternative' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
-      {% csrf_token %}
-      <button class="button button-ghost" type="submit">Proponer alternativa</button>
-    </form>
-    {% endif %}
+    </div>
+    <div class="day-rail-body">
+      {% if item.entry %}
+        <p class="dish">{{ item.entry.recipe.name }}</p>
+        <p class="tag">{{ item.entry.recipe.get_category_display }} · {% if item.entry.selection_source == 'manual' %}elegido a mano{% else %}propuesto{% endif %}</p>
+      {% else %}
+        <p class="dish dish-empty">Todavía no hay plato</p>
+      {% endif %}
+      {% if plan %}
+      <div class="day-rail-actions">
+        <form class="inline-form" method="post" action="{% url 'meal_plans:change' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
+          {% csrf_token %}
+          <label class="sr-only" for="id_recipe_{{ item.date|date:'Y-m-d' }}">Cambiar plato del {{ item.label }}</label>
+          {{ item.form.recipe }}
+          <button class="button button-secondary" type="submit">Cambiar</button>
+        </form>
+        <form method="post" action="{% url 'meal_plans:alternative' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
+          {% csrf_token %}
+          <button class="button button-ghost" type="submit">Proponer alternativa</button>
+        </form>
+      </div>
+      {% endif %}
+    </div>
   </article>
   {% endfor %}
 </div>

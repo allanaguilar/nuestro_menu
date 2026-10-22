@@ -8,7 +8,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from apps.core.mixins import HouseholdRequiredMixin
-from apps.core.week import monday_of, weekday_label, week_dates
+from apps.core.week import monday_of, weekday_label, weekday_short, week_dates
 from apps.meal_plans.forms import ChangeDishForm
 from apps.meal_plans.selectors import get_plan_for_week, list_history
 from apps.meal_plans.services.generator import (
@@ -45,6 +45,7 @@ class WeeklyMenuView(HouseholdRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         week_start = self.get_week_start()
+        today = timezone.localdate()
         plan = get_plan_for_week(self.request.household, week_start)
         entry_map = {}
         if plan:
@@ -55,6 +56,8 @@ class WeeklyMenuView(HouseholdRequiredMixin, TemplateView):
                 {
                     "date": day,
                     "label": weekday_label(day),
+                    "short": weekday_short(day),
+                    "is_today": day == today,
                     "entry": entry_map.get(day),
                     "form": ChangeDishForm(
                         household=self.request.household,

@@ -9,6 +9,7 @@ WEEKDAY_LABELS = (
     "Sábado",
     "Domingo",
 )
+WEEKDAY_SHORT = ("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
 
 
 def monday_of(value: date) -> date:
@@ -22,3 +23,7 @@ def week_dates(week_start: date) -> list[date]:
 
 def weekday_label(value: date) -> str:
     return WEEKDAY_LABELS[value.weekday()]
+
+
+def weekday_short(value: date) -> str:
+    return WEEKDAY_SHORT[value.weekday()]

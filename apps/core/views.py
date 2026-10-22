@@ -8,7 +8,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from apps.core.mixins import HouseholdRequiredMixin
-from apps.core.week import monday_of, weekday_label
+from apps.core.week import monday_of, weekday_label, weekday_short
 from apps.households.selectors import get_user_membership
 from apps.meal_plans.selectors import get_plan_for_week
 from apps.recipes.selectors import list_active_recipes, recipe_count
@@ -40,7 +40,8 @@ class DashboardView(HouseholdRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        week_start = monday_of(timezone.localdate())
+        today = timezone.localdate()
+        week_start = monday_of(today)
         plan = get_plan_for_week(self.request.household, week_start)
         entries = []
         entry_map = {}
@@ -55,6 +56,8 @@ class DashboardView(HouseholdRequiredMixin, TemplateView):
                 {
                     "date": current,
                     "label": weekday_label(current),
+                    "short": weekday_short(current),
+                    "is_today": current == today,
                     "entry": entry,
                 }
             )

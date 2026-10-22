@@ -19,17 +19,21 @@
 </div>
 {% endif %}
 
-<div class="week-grid">
+<div class="day-list">
   {% for item in entries %}
-  <article class="day-card">
-    <h2>{{ item.label }}</h2>
-    <p class="muted">{{ item.date|date:"j M" }}</p>
-    {% if item.entry %}
-      <p class="dish">{{ item.entry.recipe.name }}</p>
-      <p class="tag">{{ item.entry.recipe.get_category_display }}</p>
-    {% else %}
-      <p class="dish dish-empty">Sin plato todavía</p>
-    {% endif %}
+  <article class="day-rail{% if item.is_today %} is-today{% endif %}">
+    <div class="day-rail-when">
+      <h2 class="day-rail-short"><abbr title="{{ item.label }}">{{ item.short }}</abbr></h2>
+      <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"j M" }}</time>
+    </div>
+    <div class="day-rail-body">
+      {% if item.entry %}
+        <p class="dish">{{ item.entry.recipe.name }}</p>
+        <p class="tag">{{ item.entry.recipe.get_category_display }}</p>
+      {% else %}
+        <p class="dish dish-empty">Sin plato todavía</p>
+      {% endif %}
+    </div>
   </article>
   {% endfor %}
 </div>

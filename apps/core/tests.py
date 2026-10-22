@@ -1,6 +1,9 @@
+from datetime import date
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 
+from apps.core.week import weekday_short
 from apps.households.services import create_household_for_user
 
 
@@ -33,3 +36,12 @@ class LoginRedirectTests(TestCase):
         self.assertEqual(response["Location"], "/inicio/")
         dashboard = self.client.get("/inicio/")
         self.assertEqual(dashboard.status_code, 200)
+        self.assertContains(dashboard, "day-rail")
+        self.assertContains(dashboard, "Lun")
+
+
+class WeekdayShortTests(TestCase):
+    def test_spanish_abbreviations(self):
+        self.assertEqual(weekday_short(date(2026, 10, 19)), "Lun")
+        self.assertEqual(weekday_short(date(2026, 10, 21)), "Mié")
+        self.assertEqual(weekday_short(date(2026, 10, 25)), "Dom")
