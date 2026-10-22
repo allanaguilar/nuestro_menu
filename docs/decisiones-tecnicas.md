@@ -33,7 +33,7 @@ El generador trata los menús **aprobados** como aproximación de lo que se ha c
 
 ## Generador
 
-Algoritmo propio en Python. Evalúa hasta 200 combinaciones, con semilla opcional para pruebas. Restricciones duras: recetas activas del hogar, no evitadas por ningún miembro, siete distintas, exclusión de la semana anterior aprobada. Si no hay siete compatibles, no se guarda nada.
+Algoritmo propio en Python. Evalúa hasta 200 combinaciones, con semilla opcional para pruebas. Restricciones duras al generar: recetas activas del hogar, no evitadas por ningún miembro, siete distintas, exclusión de la semana anterior aprobada. Si no hay siete compatibles, no se guarda nada. Un cambio manual sí puede repetir un plato en la misma semana.
 
 ## PWA
 

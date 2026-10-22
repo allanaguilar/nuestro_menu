@@ -38,6 +38,8 @@ class LoginRedirectTests(TestCase):
         self.assertEqual(dashboard.status_code, 200)
         self.assertContains(dashboard, "day-rail")
         self.assertContains(dashboard, "Lun")
+        self.assertContains(dashboard, "nav-toggle")
+        self.assertContains(dashboard, "Abrir menú")
 
 
 class WeekdayShortTests(TestCase):

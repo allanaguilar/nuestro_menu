@@ -8,8 +8,8 @@
     <meta name="description" content="Organiza los almuerzos semanales de casa.">
     <title>{% block title %}Nuestro Menú{% endblock %}</title>
     <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
-    <link rel="icon" href="{% static 'icons/icon-192.png' %}">
-    <link rel="apple-touch-icon" href="{% static 'icons/icon-192.png' %}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192.png' %}">
+    <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
   </head>
   <body hx-boost="true">
@@ -18,7 +18,9 @@
       <div class="wrap header-inner">
         <a class="brand" href="{% url 'core:dashboard' %}">Nuestro Menú</a>
         {% if user.is_authenticated %}
-        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="menu-principal">Menú</button>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="menu-principal" aria-label="Abrir menú">
+          <span class="nav-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>
+        </button>
         <nav id="menu-principal" class="nav" aria-label="Principal">
           <a href="{% url 'core:dashboard' %}">Inicio</a>
           <a href="{% url 'meal_plans:current' %}">Menú semanal</a>

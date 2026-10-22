@@ -101,7 +101,7 @@ Las recetas evitadas por **cualquier** miembro no entran en el generador.
 
 ## Generador
 
-Calcula puntuaciones (recencia, frecuencia en menús **aprobados**, favoritos y notas de ambos, variedad de categoría, similitud de nombres y un poco de azar). Prueba hasta 200 combinaciones y guarda la mejor como borrador, en una transacción. Si no hay siete recetas compatibles, no guarda nada.
+Calcula puntuaciones (recencia, frecuencia en menús **aprobados**, favoritos y notas de ambos, variedad de categoría, similitud de nombres y un poco de azar). Prueba hasta 200 combinaciones y guarda la mejor como borrador, en una transacción. Si no hay siete recetas compatibles, no guarda nada. Al cambiar un día a mano se puede repetir un plato (por ejemplo alubias el lunes y el martes).
 
 Un menú aprobado no se sustituye sin confirmación. Regenerar una semana en borrador actualiza el mismo plan.
 

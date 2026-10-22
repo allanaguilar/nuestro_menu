@@ -46,7 +46,48 @@ a { color: var(--olive-dark); }
 .nav a:focus-visible, .nav button:focus-visible, .button:focus-visible, .field-input:focus-visible {
   outline: 3px solid var(--focus); outline-offset: 2px;
 }
-.nav-toggle { display: none; min-height: 44px; min-width: 44px; }
+.nav-toggle {
+  display: none;
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--olive-dark);
+  box-shadow: none;
+  cursor: pointer;
+}
+.nav-toggle-bars {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 18px;
+  height: 14px;
+}
+.nav-toggle-bars span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: var(--olive-dark);
+  border-radius: 2px;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(1) {
+  transform: translateY(6px) rotate(45deg);
+}
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(2) {
+  opacity: 0;
+}
+.nav-toggle[aria-expanded="true"] .nav-toggle-bars span:nth-child(3) {
+  transform: translateY(-6px) rotate(-45deg);
+}
 .site-footer { padding: 2.5rem 0; color: var(--muted); }
 main { padding: 1.5rem 0 3rem; }
 h1, h2 { font-weight: 700; letter-spacing: -0.02em; }
@@ -169,9 +210,25 @@ form.is-loading { opacity: 0.65; pointer-events: none; }
 
 @media (max-width: 800px) {
   .nav-toggle { display: inline-flex; }
-  .nav { display: none; width: 100%; flex-direction: column; align-items: stretch; }
+  .header-inner { flex-wrap: wrap; align-items: center; }
+  .nav {
+    display: none;
+    flex-basis: 100%;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.15rem;
+    margin: 0.45rem 0 0;
+    padding: 0.45rem 0 0;
+    border-top: 1px solid var(--line);
+  }
   .nav.is-open { display: flex; }
-  .header-inner { flex-wrap: wrap; }
+  .nav a, .nav button {
+    min-height: 44px;
+    padding: 0.5rem 0.85rem;
+    border-radius: 12px;
+  }
+  .nav-logout button { width: 100%; justify-content: flex-start; }
   .day-rail-when { width: 3.8rem; }
   .day-rail-actions .inline-form .field-input,
   .day-rail-actions .inline-form select { min-width: 0; flex: 1; }

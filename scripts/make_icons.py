@@ -1,45 +1,44 @@
 #!/usr/bin/env python3
-"""Genera iconos PWA PNG sin dependencias externas."""
+"""Genera iconos PWA PNG a partir de static/icons/app-icon-source.jpg."""
 from __future__ import annotations
 
-import struct
-import zlib
+import subprocess
+import sys
 from pathlib import Path
-
-
-def png(size: int, rgb=(92, 107, 74)) -> bytes:
-    def chunk(tag: bytes, data: bytes) -> bytes:
-        return (
-            struct.pack(">I", len(data))
-            + tag
-            + data
-            + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
-        )
-
-    raw = bytearray()
-    for y in range(size):
-        raw.append(0)
-        for x in range(size):
-            margin = size // 8
-            inside = margin <= x < size - margin and margin <= y < size - margin
-            color = rgb if inside else (246, 241, 232)
-            raw.extend(color)
-    return b"".join(
-        [
-            b"\x89PNG\r\n\x1a\n",
-            chunk(b"IHDR", struct.pack(">IIBBBBB", size, size, 8, 2, 0, 0, 0)),
-            chunk(b"IDAT", zlib.compress(bytes(raw), 9)),
-            chunk(b"IEND", b""),
-        ]
-    )
 
 
 def main() -> None:
     dest = Path(__file__).resolve().parent.parent / "static" / "icons"
-    dest.mkdir(parents=True, exist_ok=True)
-    (dest / "icon-192.png").write_bytes(png(192))
-    (dest / "icon-512.png").write_bytes(png(512))
+    source = dest / "app-icon-source.jpg"
+    if not source.exists():
+        raise SystemExit(f"Falta {source.name}.")
+    sizes = {
+        "icon-192.png": 192,
+        "icon-512.png": 512,
+        "apple-touch-icon.png": 180,
+    }
+    for name, size in sizes.items():
+        subprocess.run(
+            [
+                "sips",
+                "-s",
+                "format",
+                "png",
+                "-z",
+                str(size),
+                str(size),
+                str(source),
+                "--out",
+                str(dest / name),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+    print("Iconos actualizados:", ", ".join(sizes))
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except subprocess.CalledProcessError:
+        sys.exit(1)

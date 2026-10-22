@@ -29,11 +29,6 @@ def change_entry(household, week_start: date, day: date, recipe: Recipe, user=No
         raise PlanningError("No hay un menú para esa semana.")
     if day < plan.week_start or day > plan.week_end:
         raise PlanningError("El día no pertenece a esta semana.")
-    used = set(
-        plan.entries.exclude(day=day).values_list("recipe_id", flat=True)
-    )
-    if recipe.id in used:
-        raise PlanningError("Esa receta ya está en otro día de la misma semana.")
     entry = plan.entries.filter(day=day).first()
     if entry is None:
         entry = MealPlanEntry(meal_plan=plan, day=day)
@@ -81,9 +76,6 @@ def approve_plan(household, week_start: date):
         raise PlanningError("No hay un menú para aprobar.")
     if plan.entries.count() != 7:
         raise PlanningError("No se puede aprobar un menú incompleto.")
-    recipe_ids = list(plan.entries.values_list("recipe_id", flat=True))
-    if len(set(recipe_ids)) != 7:
-        raise PlanningError("El menú tiene recetas repetidas.")
     plan.status = MealPlan.Status.APPROVED
     plan.approved_at = timezone.now()
     plan.save(update_fields=["status", "approved_at", "updated_at"])

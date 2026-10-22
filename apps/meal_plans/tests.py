@@ -123,6 +123,17 @@ class MealPlanTests(TestCase):
         next_ids = set(nxt.entries.values_list("recipe_id", flat=True))
         self.assertTrue(previous_ids.isdisjoint(next_ids))
 
+    def test_manual_change_can_repeat_recipe(self):
+        plan = generate_week_menu(self.household, self.week, self.allan, seed=1)
+        monday_recipe = plan.entries.get(day=self.week).recipe
+        tuesday = self.week + timedelta(days=1)
+        change_entry(self.household, self.week, tuesday, monday_recipe)
+        self.assertEqual(plan.entries.get(day=self.week).recipe_id, monday_recipe.id)
+        self.assertEqual(plan.entries.get(day=tuesday).recipe_id, monday_recipe.id)
+        approve_plan(self.household, self.week)
+        plan.refresh_from_db()
+        self.assertEqual(plan.status, MealPlan.Status.APPROVED)
+
     def test_cannot_use_foreign_recipe(self):
         generate_week_menu(self.household, self.week, self.allan, seed=1)
         with self.assertRaises(Exception):
