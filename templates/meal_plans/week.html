@@ -1,24 +1,24 @@
 {% extends "base.html" %}
 {% block title %}Menú del {{ week_start|date:"j M" }}{% endblock %}
 {% block content %}
-<div class="page-head">
+<div class="page-head page-head-stack">
   <div>
-    <p class="eyebrow">Semana del {{ week_start|date:"j M Y" }} al {{ week_end|date:"j M Y" }}</p>
     <h1>Menú semanal</h1>
+    {% if plan %}
+      <span class="status status-{{ plan.status }}">{% if plan.status == 'approved' %}Aprobado{% else %}Borrador{% endif %}</span>
+    {% else %}
+      <span class="status status-draft">Sin menú</span>
+    {% endif %}
+    <p class="week-title">Semana del {{ week_start|date:"j M Y" }}</p>
   </div>
-  <div class="week-nav">
-    <a class="button button-secondary" href="{% url 'meal_plans:week' week_start=prev_week|date:'Y-m-d' %}">Semana anterior</a>
+  <nav class="week-nav" aria-label="Semana">
+    <a class="button button-secondary" href="{% url 'meal_plans:week' week_start=prev_week|date:'Y-m-d' %}">Anterior</a>
     <a class="button button-secondary" href="{% url 'meal_plans:current' %}">Hoy</a>
-    <a class="button button-secondary" href="{% url 'meal_plans:week' week_start=next_week|date:'Y-m-d' %}">Semana siguiente</a>
-  </div>
+    <a class="button button-secondary" href="{% url 'meal_plans:week' week_start=next_week|date:'Y-m-d' %}">Siguiente</a>
+  </nav>
 </div>
 
-<div class="toolbar">
-  {% if plan %}
-    <span class="status status-{{ plan.status }}">{% if plan.status == 'approved' %}Aprobado{% else %}Borrador{% endif %}</span>
-  {% else %}
-    <span class="status status-draft">Sin menú</span>
-  {% endif %}
+<div class="toolbar action-row">
   <form method="post" action="{% url 'meal_plans:generate' week_start=week_start|date:'Y-m-d' %}">
     {% csrf_token %}
     {% if plan and plan.status == 'approved' %}
@@ -56,16 +56,24 @@
       {% endif %}
       {% if plan %}
       <div class="day-rail-actions">
-        <form class="inline-form" method="post" action="{% url 'meal_plans:change' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
+        <form id="change-{{ item.date|date:'Y-m-d' }}" class="pick-form" method="post" action="{% url 'meal_plans:change' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
           {% csrf_token %}
           <label class="sr-only" for="id_recipe_{{ item.date|date:'Y-m-d' }}">Cambiar plato del {{ item.label }}</label>
           {{ item.form.recipe }}
-          <button class="button button-secondary" type="submit">Cambiar</button>
         </form>
-        <form method="post" action="{% url 'meal_plans:alternative' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
-          {% csrf_token %}
-          <button class="button button-ghost" type="submit">Proponer alternativa</button>
-        </form>
+        <div class="icon-row">
+          <button class="icon-btn" type="submit" form="change-{{ item.date|date:'Y-m-d' }}" aria-label="Cambiar plato">
+            {% include "includes/icon.html" with name="save" %}
+            <span class="sr-only">Cambiar</span>
+          </button>
+          <form method="post" action="{% url 'meal_plans:alternative' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
+            {% csrf_token %}
+            <button class="icon-btn" type="submit" aria-label="Proponer alternativa">
+              {% include "includes/icon.html" with name="refresh" %}
+              <span class="sr-only">Proponer alternativa</span>
+            </button>
+          </form>
+        </div>
       </div>
       {% endif %}
     </div>

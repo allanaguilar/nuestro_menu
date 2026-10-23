@@ -159,7 +159,7 @@ Cuando se quiera un hosting a 0 €:
 1. Crear cuenta en Render (plan Free, **sin** método de pago si quieres evitar cargos por ancho de banda extra).
 2. Crear proyecto Neon Free y copiar la URL con *pooler*.
 3. Crear un repositorio en GitHub **solo con el contenido de esta carpeta** (`nuestro_menu/`), no con toda MISAPPS.
-4. Crear el web service Free y pegar `DATABASE_URL`, `DJANGO_ALLOWED_HOSTS` y `CSRF_TRUSTED_ORIGINS`.
+4. Crear el web service Free en **Frankfurt** (misma región que Neon) y pegar `DATABASE_URL`, `DJANGO_ALLOWED_HOSTS` y `CSRF_TRUSTED_ORIGINS`. Render no permite cambiar de región un servicio ya creado: hay que crear uno nuevo y borrar el de Oregon.
 5. No crear Render Postgres Free (caduca a los 30 días).
 
 Límites: el servicio se duerme, Neon también, y no hay correo SMTP en Render Free.

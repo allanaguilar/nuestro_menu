@@ -6,8 +6,8 @@ Heroku no se usa: el plan Eco y Postgres Essential tienen coste mensual. El pres
 
 La combinación prevista para un despliegue futuro (no ejecutado en este MVP) es:
 
-- Render Free para la aplicación web.
-- Neon Free para PostgreSQL persistente.
+- Render Free para la aplicación web, región **Frankfurt**.
+- Neon Free para PostgreSQL persistente, misma región. Render no mueve un servicio de Oregon a Frankfurt: se crea uno nuevo.
 
 No se usa Render Postgres Free porque caduca a los 30 días y puede borrar datos.
 

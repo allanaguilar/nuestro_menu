@@ -1,22 +1,48 @@
 (function () {
-  const toggle = document.querySelector(".nav-toggle");
-  const nav = document.querySelector("#menu-principal");
-  if (toggle && nav) {
-    toggle.addEventListener("click", function () {
-      const open = nav.classList.toggle("is-open");
-      toggle.setAttribute("aria-expanded", open ? "true" : "false");
-      toggle.setAttribute("aria-label", open ? "Cerrar menú" : "Abrir menú");
-    });
-  }
+  if (window.__nuestroMenuReady) return;
+  window.__nuestroMenuReady = true;
 
+  document.addEventListener("click", function (event) {
+    const toggle = event.target.closest(".nav-toggle");
+    if (!toggle) return;
+    const nav = document.getElementById("menu-principal");
+    if (!nav) return;
+    const open = nav.classList.toggle("is-open");
+    toggle.setAttribute("aria-expanded", open ? "true" : "false");
+    toggle.setAttribute("aria-label", open ? "Cerrar menú" : "Abrir menú");
+  });
+
+  let confirming = false;
   document.addEventListener("submit", function (event) {
-    const button = event.target.querySelector("[data-confirm]");
-    if (button && !window.confirm(button.getAttribute("data-confirm"))) {
-      event.preventDefault();
+    const form = event.target;
+    if (!(form instanceof HTMLFormElement)) return;
+    const button = event.submitter;
+    const message = button && button.getAttribute("data-confirm");
+    if (!message) {
+      form.classList.add("is-loading");
       return;
     }
-    event.target.classList.add("is-loading");
-  });
+    if (form.dataset.confirmed === "1") {
+      delete form.dataset.confirmed;
+      form.classList.add("is-loading");
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    if (confirming) return;
+    confirming = true;
+    let accepted = false;
+    try {
+      accepted = window.confirm(message);
+    } finally {
+      confirming = false;
+    }
+    if (!accepted) return;
+    form.dataset.confirmed = "1";
+    window.setTimeout(function () {
+      form.requestSubmit(button);
+    }, 0);
+  }, true);
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {

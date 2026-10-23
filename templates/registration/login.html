@@ -13,9 +13,11 @@
     {{ form.username }}
     <label for="id_password">Contraseña</label>
     {{ form.password }}
-    <button class="button" type="submit">Entrar</button>
+    <div class="auth-actions">
+      <button class="button" type="submit">Entrar</button>
+      <p><a href="{% url 'password_reset' %}">¿Has olvidado la contraseña?</a></p>
+      <p>¿Aún no tienes cuenta? <a href="{% url 'signup' %}">Crear hogar</a></p>
+    </div>
   </form>
-  <p><a href="{% url 'password_reset' %}">¿Has olvidado la contraseña?</a></p>
-  <p>¿Aún no tienes cuenta? <a href="{% url 'signup' %}">Crear hogar</a></p>
 </section>
 {% endblock %}

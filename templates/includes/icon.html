@@ -1,0 +1,17 @@
+<svg class="icon" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false">
+{% if name == "save" %}
+  <path fill="currentColor" d="M6 3h9.2L20 7.8V20a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Zm2 2v5h7V5H8Zm-1 14h10v-6H7v6Zm2-4h6v2H9v-2Z"/>
+{% elif name == "refresh" %}
+  <path fill="currentColor" d="M12 6V3L8 7l4 4V8a6 6 0 1 1-6 6H4a8 8 0 1 0 8-8Z"/>
+{% elif name == "pencil" %}
+  <path fill="currentColor" d="M4 17.2V20h2.8l8.2-8.2-2.8-2.8L4 17.2Zm13.7-8.1c.4-.4.4-1 0-1.4l-1.4-1.4a1 1 0 0 0-1.4 0l-1.1 1.1 2.8 2.8 1.1-1.1Z"/>
+{% elif name == "heart" %}
+  <path fill="none" stroke="currentColor" stroke-width="1.8" d="M12 19s-7-4.4-7-9a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 4.6-7 9-7 9Z"/>
+{% elif name == "heart-fill" %}
+  <path fill="currentColor" d="M12 19s-7-4.4-7-9a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 4.6-7 9-7 9Z"/>
+{% elif name == "archive" %}
+  <path fill="currentColor" d="M4 4h16v4H4V4Zm1 6h14v10H5V10Zm5 2v2h4v-2h-4Z"/>
+{% elif name == "restore" %}
+  <path fill="currentColor" d="M12 5V2L8 6l4 4V7a5 5 0 1 1-5 5H5a7 7 0 1 0 7-7ZM4 18h16v2H4v-2Z"/>
+{% endif %}
+</svg>
