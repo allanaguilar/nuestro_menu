@@ -48,33 +48,23 @@
       <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"j M" }}</time>
     </div>
     <div class="day-rail-body">
-      {% if item.entry %}
-        <p class="dish">{{ item.entry.recipe.name }}</p>
-        <p class="tag">{{ item.entry.recipe.get_category_display }} · {% if item.entry.selection_source == 'manual' %}elegido a mano{% else %}propuesto{% endif %}</p>
-      {% else %}
-        <p class="dish dish-empty">Todavía no hay plato</p>
-      {% endif %}
       {% if plan %}
-      <div class="day-rail-actions">
-        <form id="change-{{ item.date|date:'Y-m-d' }}" class="pick-form" method="post" action="{% url 'meal_plans:change' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
-          {% csrf_token %}
-          <label class="sr-only" for="id_recipe_{{ item.date|date:'Y-m-d' }}">Cambiar plato del {{ item.label }}</label>
-          {{ item.form.recipe }}
-        </form>
+      <form class="day-rail-pick" method="post" action="{% url 'meal_plans:change' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
+        {% csrf_token %}
+        <label class="sr-only" for="id_recipe_{{ item.date|date:'Y-m-d' }}">Plato del {{ item.label }}</label>
+        {{ item.form.recipe }}
+        <p class="tag"{% if not item.entry %} hidden{% endif %}>{% if item.entry %}{{ item.entry.recipe.get_category_display }} · {% if item.entry.selection_source == 'manual' %}elegido a mano{% else %}propuesto{% endif %}{% endif %}</p>
         <div class="icon-row">
-          <button class="icon-btn" type="submit" form="change-{{ item.date|date:'Y-m-d' }}" aria-label="Cambiar plato">
+          <button class="icon-btn" type="submit" aria-label="Guardar el {{ item.label }}">
             {% include "includes/icon.html" with name="save" %}
-            <span class="sr-only">Cambiar</span>
           </button>
-          <form method="post" action="{% url 'meal_plans:alternative' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
-            {% csrf_token %}
-            <button class="icon-btn" type="submit" aria-label="Proponer alternativa">
-              {% include "includes/icon.html" with name="refresh" %}
-              <span class="sr-only">Proponer alternativa</span>
-            </button>
-          </form>
+          <button class="icon-btn" type="submit" formaction="{% url 'meal_plans:alternative' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}" aria-label="Proponer alternativa el {{ item.label }}">
+            {% include "includes/icon.html" with name="refresh" %}
+          </button>
         </div>
-      </div>
+      </form>
+      {% else %}
+      <p class="dish dish-empty">Todavía no hay plato</p>
       {% endif %}
     </div>
   </article>

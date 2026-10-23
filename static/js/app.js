@@ -48,6 +48,42 @@
     const form = event.detail && event.detail.elt;
     if (form && form.classList) form.classList.remove("is-loading");
   }
+  document.addEventListener("change", function (event) {
+    const select = event.target;
+    if (!(select instanceof HTMLSelectElement) || !select.classList.contains("baby-food-select")) return;
+    const slot = select.closest(".baby-slot");
+    const tag = slot && slot.querySelector(".tag");
+    if (!tag) return;
+    const option = select.selectedOptions[0];
+    const texture = option && option.dataset.texture;
+    if (!texture) {
+      tag.textContent = "";
+      tag.hidden = true;
+      return;
+    }
+    tag.textContent = option.dataset.new ? texture + " · nuevo" : texture;
+    tag.hidden = false;
+  });
+
+  document.addEventListener("change", function (event) {
+    const select = event.target;
+    if (!(select instanceof HTMLSelectElement) || !select.classList.contains("dish-select")) return;
+    const pick = select.closest(".day-rail-pick");
+    const tag = pick && pick.querySelector(".tag");
+    if (!tag) return;
+    const option = select.selectedOptions[0];
+    const category = option && option.dataset.category;
+    if (!category) {
+      tag.textContent = "";
+      tag.hidden = true;
+      return;
+    }
+    const same = select.dataset.current && select.value === select.dataset.current;
+    const source = same ? select.dataset.source || "propuesto" : "elegido a mano";
+    tag.textContent = category + " · " + source;
+    tag.hidden = false;
+  });
+
   document.addEventListener("htmx:afterRequest", releaseForm);
   document.addEventListener("htmx:sendError", releaseForm);
   document.addEventListener("htmx:responseError", releaseForm);

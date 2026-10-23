@@ -11,7 +11,12 @@ from django.views.generic import TemplateView, UpdateView
 from apps.baby.forms import BabyDayForm, BabyFoodForm
 from apps.baby.models import BabyFood, BabyPlanEntry
 from apps.baby.selectors import active_baby_foods, get_baby_plan
-from apps.baby.services import BabyPlanningError, new_foods_this_week, set_baby_meal
+from apps.baby.services import (
+    BabyPlanningError,
+    new_foods_this_week,
+    set_baby_meal,
+    suggest_baby_day,
+)
 from apps.core.mixins import HouseholdRequiredMixin, get_owned_or_404
 from apps.core.week import monday_of, week_dates, weekday_label, weekday_short
 
@@ -119,6 +124,18 @@ class SetBabyMealView(HouseholdRequiredMixin, View):
                 form.cleaned_data["merienda"],
             )
             messages.success(request, "Día del bebé actualizado.")
+        except BabyPlanningError as exc:
+            messages.error(request, str(exc))
+        return redirect("baby:week", week_start=start.isoformat())
+
+
+class SuggestBabyDayView(HouseholdRequiredMixin, View):
+    def post(self, request, week_start, day):
+        start = _parse_week(week_start)
+        day_date = _parse_day(day)
+        try:
+            suggest_baby_day(request.household, start, day_date)
+            messages.success(request, "Propuesta nueva para ese día.")
         except BabyPlanningError as exc:
             messages.error(request, str(exc))
         return redirect("baby:week", week_start=start.isoformat())

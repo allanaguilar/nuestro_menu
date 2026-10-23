@@ -10,6 +10,7 @@ from django.views.generic import TemplateView
 from apps.core.mixins import HouseholdRequiredMixin
 from apps.core.week import monday_of, weekday_label, weekday_short, week_dates
 from apps.meal_plans.forms import ChangeDishForm
+from apps.meal_plans.models import MealPlanEntry
 from apps.meal_plans.selectors import get_plan_for_week, list_history
 from apps.meal_plans.services.generator import (
     ApprovedPlanProtectedError,
@@ -52,17 +53,28 @@ class WeeklyMenuView(HouseholdRequiredMixin, TemplateView):
             entry_map = {item.day: item for item in plan.entries.select_related("recipe")}
         days = []
         for day in week_dates(week_start):
+            entry = entry_map.get(day)
+            form = ChangeDishForm(
+                household=self.request.household,
+                current=entry.recipe_id if entry else None,
+                auto_id=f"id_%s_{day.isoformat()}",
+            )
+            if entry:
+                source = (
+                    "elegido a mano"
+                    if entry.selection_source == MealPlanEntry.Source.MANUAL
+                    else "propuesto"
+                )
+                form.fields["recipe"].widget.attrs["data-current"] = str(entry.recipe_id)
+                form.fields["recipe"].widget.attrs["data-source"] = source
             days.append(
                 {
                     "date": day,
                     "label": weekday_label(day),
                     "short": weekday_short(day),
                     "is_today": day == today,
-                    "entry": entry_map.get(day),
-                    "form": ChangeDishForm(
-                        household=self.request.household,
-                        auto_id=f"id_%s_{day.isoformat()}",
-                    ),
+                    "entry": entry,
+                    "form": form,
                 }
             )
         context.update(

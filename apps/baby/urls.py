@@ -6,6 +6,7 @@ from apps.baby.views import (
     BabyFoodUpdateView,
     BabyWeekView,
     SetBabyMealView,
+    SuggestBabyDayView,
 )
 
 app_name = "baby"
@@ -20,5 +21,10 @@ urlpatterns = [
         "bebe/<slug:week_start>/dia/<slug:day>/",
         SetBabyMealView.as_view(),
         name="set",
+    ),
+    path(
+        "bebe/<slug:week_start>/dia/<slug:day>/alternativa/",
+        SuggestBabyDayView.as_view(),
+        name="alternative",
     ),
 ]

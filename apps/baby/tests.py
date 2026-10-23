@@ -96,3 +96,36 @@ class BabyMenuTests(TestCase):
         response = self.client.get("/inicio/")
         self.assertContains(response, "Hoy el bebé:")
         self.assertContains(response, "Calabacín")
+
+    def test_day_card_shows_the_food_only_in_the_select(self):
+        food = BabyFood.objects.create(
+            household=self.household,
+            name="Batata",
+            texture=BabyFood.Texture.PUREE,
+            is_new=True,
+        )
+        set_baby_meal(self.household, self.week, self.today, BabyPlanEntry.Slot.LUNCH, food)
+        response = self.client.get(f"/bebe/{self.week.isoformat()}/")
+        self.assertContains(response, 'class="baby-slot"')
+        self.assertContains(response, 'data-texture="Puré"')
+        self.assertContains(response, "Puré · nuevo")
+        self.assertContains(response, 'aria-label="Guardar el')
+        self.assertContains(response, 'aria-label="Proponer alternativa el')
+        self.assertNotContains(response, 'class="dish"')
+        self.assertNotContains(response, ">Guardar<")
+
+    def test_alternative_moves_to_the_next_food(self):
+        batata = BabyFood.objects.create(household=self.household, name="Batata")
+        pollo = BabyFood.objects.create(
+            household=self.household, name="Pollo", texture=BabyFood.Texture.PIECES
+        )
+        set_baby_meal(self.household, self.week, self.today, BabyPlanEntry.Slot.LUNCH, batata)
+        set_baby_meal(self.household, self.week, self.today, BabyPlanEntry.Slot.SNACK, pollo)
+        response = self.client.post(
+            f"/bebe/{self.week.isoformat()}/dia/{self.today.isoformat()}/alternativa/"
+        )
+        self.assertEqual(response.status_code, 302)
+        slots = dict(
+            BabyPlanEntry.objects.filter(day=self.today).values_list("slot", "food__name")
+        )
+        self.assertEqual(slots, {"comida": "Pollo", "merienda": "Batata"})

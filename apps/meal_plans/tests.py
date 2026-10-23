@@ -165,3 +165,14 @@ class MealPlanTests(TestCase):
         )
         with self.assertRaises(Exception):
             approve_plan(self.household, self.week)
+
+    def test_week_card_shows_the_dish_only_in_the_select(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        plan = generate_week_menu(self.household, self.week, self.allan, seed=1)
+        entry = plan.entries.select_related("recipe").order_by("day").first()
+        response = self.client.get(f"/menu/{self.week.isoformat()}/")
+        self.assertContains(response, 'class="day-rail-pick"')
+        self.assertContains(response, f'data-category="{entry.recipe.get_category_display()}"')
+        self.assertContains(response, " · propuesto")
+        self.assertContains(response, "selected")
+        self.assertNotContains(response, 'class="dish"')

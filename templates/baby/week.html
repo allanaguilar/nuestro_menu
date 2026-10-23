@@ -33,28 +33,23 @@
       <form method="post" action="{% url 'baby:set' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
         {% csrf_token %}
         <section class="baby-slot">
-          <p class="eyebrow">Comida</p>
-          {% if item.lunch %}
-            <p class="dish">{{ item.lunch.food.name }}</p>
-            <p class="tag">{{ item.lunch.food.get_texture_display }}{% if item.lunch.food.is_new %} · nuevo{% endif %}</p>
-          {% else %}
-            <p class="dish dish-empty">Sin comida</p>
-          {% endif %}
-          <label class="sr-only" for="id_comida_{{ item.date|date:'Y-m-d' }}">Comida del {{ item.label }}</label>
+          <label for="id_comida_{{ item.date|date:'Y-m-d' }}">Comida</label>
           {{ item.form.comida }}
+          <p class="tag"{% if not item.lunch %} hidden{% endif %}>{% if item.lunch %}{{ item.lunch.food.get_texture_display }}{% if item.lunch.food.is_new %} · nuevo{% endif %}{% endif %}</p>
         </section>
         <section class="baby-slot">
-          <p class="eyebrow">Merienda</p>
-          {% if item.snack %}
-            <p class="dish">{{ item.snack.food.name }}</p>
-            <p class="tag">{{ item.snack.food.get_texture_display }}{% if item.snack.food.is_new %} · nuevo{% endif %}</p>
-          {% else %}
-            <p class="dish dish-empty">Sin comida</p>
-          {% endif %}
-          <label class="sr-only" for="id_merienda_{{ item.date|date:'Y-m-d' }}">Merienda del {{ item.label }}</label>
+          <label for="id_merienda_{{ item.date|date:'Y-m-d' }}">Merienda</label>
           {{ item.form.merienda }}
+          <p class="tag"{% if not item.snack %} hidden{% endif %}>{% if item.snack %}{{ item.snack.food.get_texture_display }}{% if item.snack.food.is_new %} · nuevo{% endif %}{% endif %}</p>
         </section>
-        <button class="button baby-day-save" type="submit">Guardar</button>
+        <div class="icon-row baby-day-actions">
+          <button class="icon-btn" type="submit" aria-label="Guardar el {{ item.label }}">
+            {% include "includes/icon.html" with name="save" %}
+          </button>
+          <button class="icon-btn" type="submit" formaction="{% url 'baby:alternative' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}" aria-label="Proponer alternativa el {{ item.label }}">
+            {% include "includes/icon.html" with name="refresh" %}
+          </button>
+        </div>
       </form>
     </div>
   </article>

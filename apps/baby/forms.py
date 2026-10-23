@@ -22,6 +22,25 @@ class BabyFoodForm(forms.ModelForm):
                 field.widget.attrs["class"] = f"{css} field-input".strip()
 
 
+class BabyFoodSelect(forms.Select):
+    def __init__(self, *args, foods=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.foods = {str(food.pk): food for food in foods or []}
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        option = super().create_option(
+            name, value, label, selected, index, subindex=subindex, attrs=attrs
+        )
+        raw = option["value"]
+        food = self.foods.get(str(getattr(raw, "value", raw)))
+        if food is None:
+            return option
+        option["attrs"]["data-texture"] = food.get_texture_display()
+        if food.is_new:
+            option["attrs"]["data-new"] = "1"
+        return option
+
+
 class BabyDayForm(forms.Form):
     comida = forms.ModelChoiceField(
         queryset=BabyFood.objects.none(),
@@ -38,10 +57,14 @@ class BabyDayForm(forms.Form):
 
     def __init__(self, *args, household=None, lunch=None, snack=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["comida"].queryset = _food_choices(household, lunch)
-        self.fields["merienda"].queryset = _food_choices(household, snack)
+        lunch_foods = _food_choices(household, lunch)
+        snack_foods = _food_choices(household, snack)
+        self.fields["comida"].widget = BabyFoodSelect(foods=lunch_foods)
+        self.fields["merienda"].widget = BabyFoodSelect(foods=snack_foods)
+        self.fields["comida"].queryset = lunch_foods
+        self.fields["merienda"].queryset = snack_foods
         for field in self.fields.values():
-            field.widget.attrs["class"] = "field-input"
+            field.widget.attrs["class"] = "field-input baby-food-select"
 
 
 def _food_choices(household, current):
