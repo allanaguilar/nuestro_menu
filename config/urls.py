@@ -5,7 +5,7 @@ from django.views.generic import RedirectView
 from django.conf import settings
 
 from apps.core.views import HealthView, HomeView, OfflineView, ServiceWorkerView
-from apps.households.views import SignUpView
+from apps.households.views import PasswordResetView, SignUpView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
@@ -25,7 +25,7 @@ urlpatterns = [
     path("cuentas/registro/", SignUpView.as_view(), name="signup"),
     path(
         "cuentas/clave/",
-        auth_views.PasswordResetView.as_view(
+        PasswordResetView.as_view(
             template_name="registration/password_reset_form.html",
             email_template_name="registration/password_reset_email.html",
             subject_template_name="registration/password_reset_subject.txt",

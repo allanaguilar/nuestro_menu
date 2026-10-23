@@ -30,4 +30,8 @@ services:
       - key: CSRF_TRUSTED_ORIGINS
         sync: false
       - key: EMAIL_BACKEND
-        value: django.core.mail.backends.console.EmailBackend
+        value: apps.core.mail.BrevoEmailBackend
+      - key: BREVO_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false

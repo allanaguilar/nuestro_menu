@@ -44,6 +44,15 @@
     }, 0);
   }, true);
 
+  function releaseForm(event) {
+    const form = event.detail && event.detail.elt;
+    if (form && form.classList) form.classList.remove("is-loading");
+  }
+  document.addEventListener("htmx:afterRequest", releaseForm);
+  document.addEventListener("htmx:sendError", releaseForm);
+  document.addEventListener("htmx:responseError", releaseForm);
+  document.addEventListener("htmx:timeout", releaseForm);
+
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {
       navigator.serviceWorker.register("/sw.js").catch(function () {

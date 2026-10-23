@@ -1,5 +1,5 @@
 from django.contrib import messages
-from django.contrib.auth import login
+from django.contrib.auth import login, views as auth_views
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import Http404
 from django.shortcuts import redirect, render
@@ -7,8 +7,9 @@ from django.urls import reverse
 from django.views import View
 from django.views.generic import FormView, TemplateView
 
+from apps.core.mail import EmailDeliveryError
 from apps.core.mixins import HouseholdRequiredMixin
-from apps.households.forms import HouseholdSettingsForm, SignUpForm
+from apps.households.forms import HouseholdSettingsForm, PasswordResetForm, SignUpForm
 from apps.households.models import HouseholdInvite
 from apps.households.selectors import get_user_membership, list_members
 from apps.households.services import (
@@ -17,6 +18,20 @@ from apps.households.services import (
     create_household_for_user,
     create_invite,
 )
+
+
+class PasswordResetView(auth_views.PasswordResetView):
+    form_class = PasswordResetForm
+
+    def form_valid(self, form):
+        try:
+            return super().form_valid(form)
+        except EmailDeliveryError:
+            form.add_error(
+                None,
+                "No se pudo enviar el correo. Inténtalo de nuevo en unos minutos.",
+            )
+            return self.form_invalid(form)
 
 
 class SignUpView(FormView):

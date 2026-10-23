@@ -106,10 +106,6 @@ LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "core:dashboard"
 LOGOUT_REDIRECT_URL = "login"
 
-EMAIL_BACKEND = env(
-    "EMAIL_BACKEND",
-    default="django.core.mail.backends.console.EmailBackend",
-)
 EMAIL_HOST = env("EMAIL_HOST", default="")
 EMAIL_PORT = env.int("EMAIL_PORT", default=587)
 EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
@@ -119,6 +115,15 @@ DEFAULT_FROM_EMAIL = env(
     "DEFAULT_FROM_EMAIL",
     default="Nuestro Menú <no-reply@localhost>",
 )
+# Render bloquea los puertos SMTP. Con clave de API el correo sale por HTTPS.
+BREVO_API_KEY = env("BREVO_API_KEY", default="")
+if BREVO_API_KEY:
+    EMAIL_BACKEND = "apps.core.mail.BrevoEmailBackend"
+else:
+    EMAIL_BACKEND = env(
+        "EMAIL_BACKEND",
+        default="django.core.mail.backends.console.EmailBackend",
+    )
 
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 

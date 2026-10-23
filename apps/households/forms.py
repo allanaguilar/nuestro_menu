@@ -1,6 +1,9 @@
 from django import forms
+from django.contrib.auth.forms import PasswordResetForm as DjangoPasswordResetForm
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.core.mail import EmailMultiAlternatives
+from django.template import loader
 
 
 class StyledFormMixin:
@@ -44,6 +47,25 @@ class SignUpForm(StyledFormMixin, UserCreationForm):
                 "Indica un nombre de hogar o usa un enlace de invitación.",
             )
         return cleaned
+
+
+class PasswordResetForm(DjangoPasswordResetForm):
+    """Reenvía el fallo de Brevo. Django 5 se lo traga y muestra éxito igual."""
+
+    def send_mail(
+        self,
+        subject_template_name,
+        email_template_name,
+        context,
+        from_email,
+        to_email,
+        html_email_template_name=None,
+    ):
+        subject = loader.render_to_string(subject_template_name, context)
+        subject = "".join(subject.splitlines())
+        body = loader.render_to_string(email_template_name, context)
+        message = EmailMultiAlternatives(subject, body, from_email, [to_email])
+        message.send()
 
 
 class HouseholdSettingsForm(StyledFormMixin, forms.Form):
