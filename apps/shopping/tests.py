@@ -49,6 +49,7 @@ class ShoppingListTests(TestCase):
         self.assertRedirects(moved, "/lista/")
         page = self.client.get("/lista/")
         self.assertContains(page, 'id="pasillo-verduras"')
+        self.assertContains(page, "fa-carrot")
         self.assertContains(page, "Verduras")
         self.assertContains(page, 'value="verduras" selected')
         self.assertNotContains(page, "Frescos")

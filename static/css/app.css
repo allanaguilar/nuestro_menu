@@ -41,8 +41,9 @@ a { color: var(--olive-dark); }
 .nav { display: flex; flex-wrap: wrap; gap: 0.75rem 1rem; align-items: center; }
 .nav a, .nav button {
   color: var(--ink); text-decoration: none; background: none; border: 0; font: inherit; cursor: pointer;
-  min-height: 44px; display: inline-flex; align-items: center;
+  min-height: 44px; display: inline-flex; align-items: center; gap: 0.55rem;
 }
+.nav .icon { flex: 0 0 auto; color: var(--olive-dark); }
 .nav a:focus-visible, .nav button:focus-visible, .button:focus-visible, .field-input:focus-visible {
   outline: 3px solid var(--focus); outline-offset: 2px;
 }
@@ -253,10 +254,14 @@ label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
 .shopping-today { text-align: center; margin: 0.35rem auto 0; }
 .shop-board { width: min(40rem, 100%); margin: 0 auto 1.2rem; }
 .shop-aisle h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   margin: 1rem 0 0.15rem;
   font-size: 1rem;
   color: var(--olive-dark);
 }
+.shop-aisle h2 .icon { flex: 0 0 auto; }
 .shop-cart h2 { color: var(--muted); }
 .shop-list { list-style: none; margin: 0; padding: 0; }
 .shop-item {
@@ -311,7 +316,15 @@ label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
   flex-shrink: 0;
 }
 .icon-btn:hover, .icon-btn:focus-visible { background: var(--bg-accent); }
-.icon { width: 20px; height: 20px; display: block; }
+.icon {
+  display: inline-block;
+  width: 1.25em;
+  font-size: 1.05rem;
+  line-height: 1;
+  text-align: center;
+  font-style: normal;
+}
+.icon-btn .icon { font-size: 1.15rem; }
 .dish { font-size: 1.1rem; margin: 0.4rem 0; }
 .dish-empty { color: var(--muted); font-style: italic; }
 .tag, .status {

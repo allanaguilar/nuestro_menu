@@ -14,7 +14,7 @@
 <div class="shop-board">
   {% for group in groups %}
   <section class="shop-aisle" aria-labelledby="pasillo-{{ group.key }}">
-    <h2 id="pasillo-{{ group.key }}">{{ group.label }}</h2>
+    <h2 id="pasillo-{{ group.key }}">{% include "includes/icon.html" with name=group.key %}<span>{{ group.label }}</span></h2>
     <ul class="shop-list">
       {% for item in group.items %}
       {% include "shopping/item.html" %}
@@ -25,7 +25,7 @@
 
   {% if cart %}
   <section class="shop-aisle shop-cart" aria-labelledby="en-el-carro">
-    <h2 id="en-el-carro">En el carro</h2>
+    <h2 id="en-el-carro">{% include "includes/icon.html" with name="cart" %}<span>En el carro</span></h2>
     <ul class="shop-list">
       {% for item in cart %}
       {% include "shopping/item.html" %}
