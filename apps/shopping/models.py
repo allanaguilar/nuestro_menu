@@ -11,7 +11,11 @@ def normalize_item_name(name: str) -> str:
 class ShoppingItem(models.Model):
     class Aisle(models.TextChoices):
         NONE = "none", "Sin pasillo"
-        FRESH = "fresh", "Frescos"
+        FRUIT = "frutas", "Frutas"
+        VEGETABLE = "verduras", "Verduras"
+        DAIRY = "lacteos", "Lácteos"
+        MEAT = "carnes", "Carnes"
+        FISH = "pescados", "Pescados"
         FRIDGE = "fridge", "Nevera"
         PANTRY = "pantry", "Despensa"
         CLEANING = "cleaning", "Limpieza"
