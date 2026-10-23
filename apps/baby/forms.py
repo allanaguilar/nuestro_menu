@@ -22,20 +22,33 @@ class BabyFoodForm(forms.ModelForm):
                 field.widget.attrs["class"] = f"{css} field-input".strip()
 
 
-class BabyMealForm(forms.Form):
-    food = forms.ModelChoiceField(
+class BabyDayForm(forms.Form):
+    comida = forms.ModelChoiceField(
         queryset=BabyFood.objects.none(),
         required=False,
         empty_label="Sin comida",
-        label="",
+        label="Comida",
+    )
+    merienda = forms.ModelChoiceField(
+        queryset=BabyFood.objects.none(),
+        required=False,
+        empty_label="Sin comida",
+        label="Merienda",
     )
 
-    def __init__(self, *args, household=None, current=None, **kwargs):
+    def __init__(self, *args, household=None, lunch=None, snack=None, **kwargs):
         super().__init__(*args, **kwargs)
-        queryset = BabyFood.objects.none()
-        if household is not None:
-            queryset = BabyFood.objects.filter(household=household).filter(
-                Q(is_active=True) | Q(pk=current)
-            ).order_by("name")
-        self.fields["food"].queryset = queryset
-        self.fields["food"].widget.attrs["class"] = "field-input"
+        self.fields["comida"].queryset = _food_choices(household, lunch)
+        self.fields["merienda"].queryset = _food_choices(household, snack)
+        for field in self.fields.values():
+            field.widget.attrs["class"] = "field-input"
+
+
+def _food_choices(household, current):
+    if household is None:
+        return BabyFood.objects.none()
+    return (
+        BabyFood.objects.filter(household=household)
+        .filter(Q(is_active=True) | Q(pk=current))
+        .order_by("name")
+    )

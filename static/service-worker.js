@@ -1,4 +1,4 @@
-const CACHE_NAME = "nuestro-menu-static-v12";
+const CACHE_NAME = "nuestro-menu-static-v14";
 const STATIC_ASSETS = [
   "/static/css/app.css",
   "/static/js/app.js",

@@ -30,26 +30,32 @@
       <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"j M" }}</time>
     </div>
     <div class="day-rail-body">
-      {% for slot in item.slots %}
-      <section class="baby-slot">
-        <p class="eyebrow">{{ slot.label }}</p>
-        {% if slot.entry %}
-          <p class="dish">{{ slot.entry.food.name }}</p>
-          <p class="tag">{{ slot.entry.food.get_texture_display }}{% if slot.entry.food.is_new %} · nuevo{% endif %}</p>
-        {% else %}
-          <p class="dish dish-empty">Sin comida</p>
-        {% endif %}
-        <form class="pick-form" method="post" action="{% url 'baby:set' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' slot=slot.slot %}">
-          {% csrf_token %}
-          <label class="sr-only" for="id_food_{{ item.date|date:'Y-m-d' }}_{{ slot.slot }}">{{ slot.label }} del {{ item.label }}</label>
-          {{ slot.form.food }}
-          <button class="icon-btn" type="submit" aria-label="Guardar {{ slot.label }} del {{ item.label }}">
-            {% include "includes/icon.html" with name="save" %}
-            <span class="sr-only">Guardar</span>
-          </button>
-        </form>
-      </section>
-      {% endfor %}
+      <form method="post" action="{% url 'baby:set' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
+        {% csrf_token %}
+        <section class="baby-slot">
+          <p class="eyebrow">Comida</p>
+          {% if item.lunch %}
+            <p class="dish">{{ item.lunch.food.name }}</p>
+            <p class="tag">{{ item.lunch.food.get_texture_display }}{% if item.lunch.food.is_new %} · nuevo{% endif %}</p>
+          {% else %}
+            <p class="dish dish-empty">Sin comida</p>
+          {% endif %}
+          <label class="sr-only" for="id_comida_{{ item.date|date:'Y-m-d' }}">Comida del {{ item.label }}</label>
+          {{ item.form.comida }}
+        </section>
+        <section class="baby-slot">
+          <p class="eyebrow">Merienda</p>
+          {% if item.snack %}
+            <p class="dish">{{ item.snack.food.name }}</p>
+            <p class="tag">{{ item.snack.food.get_texture_display }}{% if item.snack.food.is_new %} · nuevo{% endif %}</p>
+          {% else %}
+            <p class="dish dish-empty">Sin comida</p>
+          {% endif %}
+          <label class="sr-only" for="id_merienda_{{ item.date|date:'Y-m-d' }}">Merienda del {{ item.label }}</label>
+          {{ item.form.merienda }}
+        </section>
+        <button class="button baby-day-save" type="submit">Guardar</button>
+      </form>
     </div>
   </article>
   {% endfor %}

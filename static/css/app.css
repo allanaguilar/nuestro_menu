@@ -233,13 +233,10 @@ label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
 .day-rail-actions form { margin: 0; }
 .baby-slot { margin-top: 0.85rem; }
 .baby-slot:first-child { margin-top: 0; }
-.baby-slot .pick-form {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  margin-top: 0.45rem;
-}
-.baby-slot .pick-form select { flex: 1; }
+.baby-slot select { width: 100%; margin-top: 0.45rem; }
+.baby-day-save { margin-top: 0.85rem; }
+.baby-food-form { margin-bottom: 1.25rem; }
+.baby-form-actions { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 0.4rem; }
 .baby-today { text-align: center; margin: 1.1rem auto 0; }
 .pick-form select {
   width: 100%;

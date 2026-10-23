@@ -3,11 +3,12 @@ from datetime import datetime, timedelta
 from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import redirect
+from django.urls import reverse
 from django.utils import timezone
 from django.views import View
-from django.views.generic import TemplateView
+from django.views.generic import TemplateView, UpdateView
 
-from apps.baby.forms import BabyFoodForm, BabyMealForm
+from apps.baby.forms import BabyDayForm, BabyFoodForm
 from apps.baby.models import BabyFood, BabyPlanEntry
 from apps.baby.selectors import active_baby_foods, get_baby_plan
 from apps.baby.services import BabyPlanningError, new_foods_this_week, set_baby_meal
@@ -49,30 +50,26 @@ class BabyWeekView(HouseholdRequiredMixin, TemplateView):
             entry_map = {(item.day, item.slot): item for item in plan.entries.all()}
         days = []
         for day in week_dates(week_start):
-            slots = []
-            for slot, label in BabyPlanEntry.Slot.choices:
-                entry = entry_map.get((day, slot))
-                current = entry.food_id if entry else None
-                slots.append(
-                    {
-                        "slot": slot,
-                        "label": label,
-                        "entry": entry,
-                        "form": BabyMealForm(
-                            household=self.request.household,
-                            current=current,
-                            initial={"food": current},
-                            auto_id=f"id_%s_{day.isoformat()}_{slot}",
-                        ),
-                    }
-                )
+            lunch = entry_map.get((day, BabyPlanEntry.Slot.LUNCH))
+            snack = entry_map.get((day, BabyPlanEntry.Slot.SNACK))
             days.append(
                 {
                     "date": day,
                     "label": weekday_label(day),
                     "short": weekday_short(day),
                     "is_today": day == today,
-                    "slots": slots,
+                    "lunch": lunch,
+                    "snack": snack,
+                    "form": BabyDayForm(
+                        household=self.request.household,
+                        lunch=lunch.food_id if lunch else None,
+                        snack=snack.food_id if snack else None,
+                        initial={
+                            "comida": lunch.food_id if lunch else None,
+                            "merienda": snack.food_id if snack else None,
+                        },
+                        auto_id=f"id_%s_{day.isoformat()}",
+                    ),
                 }
             )
         new_foods = list(new_foods_this_week(plan))
@@ -90,18 +87,38 @@ class BabyWeekView(HouseholdRequiredMixin, TemplateView):
 
 
 class SetBabyMealView(HouseholdRequiredMixin, View):
-    def post(self, request, week_start, day, slot):
+    def post(self, request, week_start, day):
         start = _parse_week(week_start)
         day_date = _parse_day(day)
-        form = BabyMealForm(request.POST, household=request.household)
+        lunch = None
+        snack = None
+        plan = get_baby_plan(request.household, start)
+        if plan:
+            for entry in plan.entries.filter(day=day_date):
+                if entry.slot == BabyPlanEntry.Slot.LUNCH:
+                    lunch = entry.food_id
+                elif entry.slot == BabyPlanEntry.Slot.SNACK:
+                    snack = entry.food_id
+        form = BabyDayForm(request.POST, household=request.household, lunch=lunch, snack=snack)
         if not form.is_valid():
-            messages.error(request, "Elige un alimento válido.")
+            messages.error(request, "Elige alimentos válidos.")
             return redirect("baby:week", week_start=start.isoformat())
         try:
             set_baby_meal(
-                request.household, start, day_date, slot, form.cleaned_data["food"]
+                request.household,
+                start,
+                day_date,
+                BabyPlanEntry.Slot.LUNCH,
+                form.cleaned_data["comida"],
             )
-            messages.success(request, "Comida del bebé actualizada.")
+            set_baby_meal(
+                request.household,
+                start,
+                day_date,
+                BabyPlanEntry.Slot.SNACK,
+                form.cleaned_data["merienda"],
+            )
+            messages.success(request, "Día del bebé actualizado.")
         except BabyPlanningError as exc:
             messages.error(request, str(exc))
         return redirect("baby:week", week_start=start.isoformat())
@@ -127,6 +144,23 @@ class BabyFoodListView(HouseholdRequiredMixin, TemplateView):
             messages.success(request, f"«{food.name}» añadido.")
             return redirect("baby:foods")
         return self.render_to_response(self.get_context_data(form=form))
+
+
+class BabyFoodUpdateView(HouseholdRequiredMixin, UpdateView):
+    model = BabyFood
+    form_class = BabyFoodForm
+    template_name = "baby/food_form.html"
+    context_object_name = "food"
+
+    def get_queryset(self):
+        return BabyFood.objects.filter(household=self.request.household)
+
+    def form_valid(self, form):
+        messages.success(self.request, f"«{form.instance.name}» actualizado.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("baby:foods")
 
 
 class BabyFoodArchiveView(HouseholdRequiredMixin, View):

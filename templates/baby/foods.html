@@ -11,7 +11,7 @@
   </div>
 </div>
 
-<form method="post" class="panel">
+<form method="post" class="panel baby-food-form">
   {% csrf_token %}
   {{ form.as_p }}
   <button class="button" type="submit">Añadir alimento</button>
@@ -25,16 +25,21 @@
       <h2>{{ food.name }}</h2>
       <p class="tag">{{ food.get_texture_display }}{% if food.is_new %} · nuevo{% else %} · ya lo toma{% endif %}{% if not food.is_active %} · archivado{% endif %}</p>
     </div>
-    <form method="post" action="{% url 'baby:archive' pk=food.pk %}">
-      {% csrf_token %}
-      <button class="icon-btn" type="submit" aria-label="{% if food.is_active %}Archivar {{ food.name }}{% else %}Restaurar {{ food.name }}{% endif %}">
-        {% if food.is_active %}
-          {% include "includes/icon.html" with name="archive" %}
-        {% else %}
-          {% include "includes/icon.html" with name="restore" %}
-        {% endif %}
-      </button>
-    </form>
+    <div class="icon-row">
+      <a class="icon-btn" href="{% url 'baby:edit' pk=food.pk %}" aria-label="Editar {{ food.name }}">
+        {% include "includes/icon.html" with name="pencil" %}
+      </a>
+      <form method="post" action="{% url 'baby:archive' pk=food.pk %}">
+        {% csrf_token %}
+        <button class="icon-btn" type="submit" aria-label="{% if food.is_active %}Archivar {{ food.name }}{% else %}Restaurar {{ food.name }}{% endif %}">
+          {% if food.is_active %}
+            {% include "includes/icon.html" with name="archive" %}
+          {% else %}
+            {% include "includes/icon.html" with name="restore" %}
+          {% endif %}
+        </button>
+      </form>
+    </div>
   </li>
   {% endfor %}
 </ul>

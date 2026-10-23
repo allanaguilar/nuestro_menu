@@ -44,8 +44,8 @@ class BabyMenuTests(TestCase):
     def test_other_household_food_is_rejected(self):
         foreign = BabyFood.objects.create(household=self.other, name="Plátano")
         response = self.client.post(
-            f"/bebe/{self.week.isoformat()}/dia/{self.today.isoformat()}/comida/",
-            {"food": str(foreign.pk)},
+            f"/bebe/{self.week.isoformat()}/dia/{self.today.isoformat()}/",
+            {"comida": str(foreign.pk), "merienda": ""},
         )
         self.assertEqual(response.status_code, 302)
         self.assertFalse(BabyPlanEntry.objects.filter(food=foreign).exists())
@@ -65,6 +65,30 @@ class BabyMenuTests(TestCase):
         )
         two = self.client.get(f"/bebe/{self.week.isoformat()}/")
         self.assertContains(two, "Esta semana hay más de un alimento nuevo")
+
+    def test_one_save_keeps_both_slots(self):
+        zucchini = BabyFood.objects.create(household=self.household, name="Calabacín")
+        pear = BabyFood.objects.create(household=self.household, name="Pera", is_new=False)
+        response = self.client.post(
+            f"/bebe/{self.week.isoformat()}/dia/{self.today.isoformat()}/",
+            {"comida": str(zucchini.pk), "merienda": str(pear.pk)},
+        )
+        self.assertEqual(response.status_code, 302)
+        slots = set(
+            BabyPlanEntry.objects.filter(day=self.today).values_list("slot", "food__name")
+        )
+        self.assertEqual(slots, {("comida", "Calabacín"), ("merienda", "Pera")})
+
+    def test_edit_renames_food(self):
+        food = BabyFood.objects.create(household=self.household, name="Patata")
+        response = self.client.post(
+            f"/bebe/alimentos/{food.pk}/editar/",
+            {"name": "Patata chafada", "texture": BabyFood.Texture.MASHED, "is_new": "on"},
+        )
+        self.assertEqual(response.status_code, 302)
+        food.refresh_from_db()
+        self.assertEqual(food.name, "Patata chafada")
+        self.assertEqual(BabyFood.objects.filter(household=self.household).count(), 1)
 
     def test_dashboard_shows_today(self):
         food = BabyFood.objects.create(household=self.household, name="Calabacín")
