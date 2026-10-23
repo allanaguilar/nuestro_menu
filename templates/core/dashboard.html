@@ -43,6 +43,12 @@
   {% endfor %}
 </div>
 
+<p class="lede baby-today">
+  Hoy el bebé:
+  {% if baby_lunch %}{{ baby_lunch.food.name }}{% else %}sin comida{% endif %}{% if baby_snack %} · merienda {{ baby_snack.food.name }}{% endif %}.
+  <a href="{% url 'baby:current' %}">Abrir el menú del bebé</a>
+</p>
+
 <div class="toolbar action-row">
   <form method="post" action="{% url 'meal_plans:generate' week_start=week_start|date:'Y-m-d' %}">
     {% csrf_token %}

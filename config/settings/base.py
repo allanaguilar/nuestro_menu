@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.recipes",
     "apps.preferences",
     "apps.meal_plans",
+    "apps.baby",
 ]
 
 MIDDLEWARE = [

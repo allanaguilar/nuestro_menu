@@ -60,4 +60,5 @@ urlpatterns = [
     path("", include("apps.recipes.urls")),
     path("", include("apps.preferences.urls")),
     path("", include("apps.meal_plans.urls")),
+    path("", include("apps.baby.urls")),
 ]

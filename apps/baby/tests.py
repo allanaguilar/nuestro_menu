@@ -1,0 +1,74 @@
+from datetime import timedelta
+
+from django.contrib.auth.models import User
+from django.test import TestCase
+from django.utils import timezone
+
+from apps.baby.models import BabyFood, BabyPlanEntry
+from apps.baby.services import set_baby_meal
+from apps.core.week import monday_of
+from apps.households.services import create_household_for_user
+from apps.recipes.models import Recipe
+
+
+class BabyMenuTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("allan", password="clave-segura-1")
+        self.other_user = User.objects.create_user("vecino", password="clave-segura-1")
+        self.household = create_household_for_user(self.user, "Casa")
+        self.other = create_household_for_user(self.other_user, "Otra")
+        self.week = monday_of(timezone.localdate())
+        self.today = timezone.localdate()
+        self.client.login(username="allan", password="clave-segura-1")
+
+    def test_food_is_not_a_recipe(self):
+        BabyFood.objects.create(
+            household=self.household, name="Calabacín", texture=BabyFood.Texture.PUREE
+        )
+        self.assertFalse(Recipe.objects.filter(name="Calabacín").exists())
+        response = self.client.get("/recetas/")
+        self.assertNotContains(response, "Calabacín")
+
+    def test_lunch_and_snack_same_day(self):
+        zucchini = BabyFood.objects.create(household=self.household, name="Calabacín")
+        pear = BabyFood.objects.create(
+            household=self.household, name="Pera", texture=BabyFood.Texture.MASHED, is_new=False
+        )
+        set_baby_meal(self.household, self.week, self.today, BabyPlanEntry.Slot.LUNCH, zucchini)
+        set_baby_meal(self.household, self.week, self.today, BabyPlanEntry.Slot.SNACK, pear)
+        slots = set(
+            BabyPlanEntry.objects.filter(day=self.today).values_list("slot", "food__name")
+        )
+        self.assertEqual(slots, {("comida", "Calabacín"), ("merienda", "Pera")})
+
+    def test_other_household_food_is_rejected(self):
+        foreign = BabyFood.objects.create(household=self.other, name="Plátano")
+        response = self.client.post(
+            f"/bebe/{self.week.isoformat()}/dia/{self.today.isoformat()}/comida/",
+            {"food": str(foreign.pk)},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(BabyPlanEntry.objects.filter(food=foreign).exists())
+
+    def test_notice_only_with_two_new_foods(self):
+        zucchini = BabyFood.objects.create(household=self.household, name="Calabacín", is_new=True)
+        pear = BabyFood.objects.create(household=self.household, name="Pera", is_new=True)
+        set_baby_meal(self.household, self.week, self.today, BabyPlanEntry.Slot.LUNCH, zucchini)
+        one = self.client.get(f"/bebe/{self.week.isoformat()}/")
+        self.assertNotContains(one, "más de un alimento nuevo")
+        set_baby_meal(
+            self.household,
+            self.week,
+            self.today + timedelta(days=1) if self.today.weekday() < 6 else self.today - timedelta(days=1),
+            BabyPlanEntry.Slot.LUNCH,
+            pear,
+        )
+        two = self.client.get(f"/bebe/{self.week.isoformat()}/")
+        self.assertContains(two, "Esta semana hay más de un alimento nuevo")
+
+    def test_dashboard_shows_today(self):
+        food = BabyFood.objects.create(household=self.household, name="Calabacín")
+        set_baby_meal(self.household, self.week, self.today, BabyPlanEntry.Slot.LUNCH, food)
+        response = self.client.get("/inicio/")
+        self.assertContains(response, "Hoy el bebé:")
+        self.assertContains(response, "Calabacín")

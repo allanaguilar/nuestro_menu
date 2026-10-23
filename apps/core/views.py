@@ -7,6 +7,7 @@ from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
+from apps.baby.selectors import baby_meals_on
 from apps.core.mixins import HouseholdRequiredMixin
 from apps.core.week import monday_of, weekday_label, weekday_short
 from apps.households.selectors import get_user_membership
@@ -61,6 +62,7 @@ class DashboardView(HouseholdRequiredMixin, TemplateView):
                     "entry": entry,
                 }
             )
+        baby = baby_meals_on(self.request.household, today)
         context.update(
             {
                 "week_start": week_start,
@@ -68,6 +70,8 @@ class DashboardView(HouseholdRequiredMixin, TemplateView):
                 "entries": entries,
                 "recipe_total": recipe_count(self.request.household),
                 "active_recipes": list_active_recipes(self.request.household).count(),
+                "baby_lunch": baby.get("comida"),
+                "baby_snack": baby.get("merienda"),
             }
         )
         return context

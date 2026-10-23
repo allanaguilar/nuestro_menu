@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Bebé · semana del {{ week_start|date:"j M" }}{% endblock %}
+{% block content %}
+<div class="page-head page-head-stack">
+  <div>
+    <h1>Bebé</h1>
+    <p class="week-title">Semana del {{ week_start|date:"j M Y" }}</p>
+    <p class="lede">Comida y merienda, aparte del menú de casa.</p>
+  </div>
+  <nav class="week-nav" aria-label="Semana">
+    <a class="button button-secondary" href="{% url 'baby:week' week_start=prev_week|date:'Y-m-d' %}">Anterior</a>
+    <a class="button button-secondary" href="{% url 'baby:current' %}">Hoy</a>
+    <a class="button button-secondary" href="{% url 'baby:week' week_start=next_week|date:'Y-m-d' %}">Siguiente</a>
+  </nav>
+</div>
+
+<div class="toolbar action-row">
+  <a class="button" href="{% url 'baby:foods' %}">Alimentos{% if food_count %} ({{ food_count }}){% endif %}</a>
+</div>
+
+{% if new_foods|length > 1 %}
+<p class="notice">Esta semana hay más de un alimento nuevo: {% for food in new_foods %}{{ food.name }}{% if not forloop.last %}, {% endif %}{% endfor %}.</p>
+{% endif %}
+
+<div class="day-list">
+  {% for item in days %}
+  <article class="day-rail{% if item.is_today %} is-today{% endif %}">
+    <div class="day-rail-when">
+      <h2 class="day-rail-short"><abbr title="{{ item.label }}">{{ item.short }}</abbr></h2>
+      <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"j M" }}</time>
+    </div>
+    <div class="day-rail-body">
+      {% for slot in item.slots %}
+      <section class="baby-slot">
+        <p class="eyebrow">{{ slot.label }}</p>
+        {% if slot.entry %}
+          <p class="dish">{{ slot.entry.food.name }}</p>
+          <p class="tag">{{ slot.entry.food.get_texture_display }}{% if slot.entry.food.is_new %} · nuevo{% endif %}</p>
+        {% else %}
+          <p class="dish dish-empty">Sin comida</p>
+        {% endif %}
+        <form class="pick-form" method="post" action="{% url 'baby:set' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' slot=slot.slot %}">
+          {% csrf_token %}
+          <label class="sr-only" for="id_food_{{ item.date|date:'Y-m-d' }}_{{ slot.slot }}">{{ slot.label }} del {{ item.label }}</label>
+          {{ slot.form.food }}
+          <button class="icon-btn" type="submit" aria-label="Guardar {{ slot.label }} del {{ item.label }}">
+            {% include "includes/icon.html" with name="save" %}
+            <span class="sr-only">Guardar</span>
+          </button>
+        </form>
+      </section>
+      {% endfor %}
+    </div>
+  </article>
+  {% endfor %}
+</div>
+{% endblock %}

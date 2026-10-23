@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Alimentos del bebé{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Alimentos del bebé</h1>
+    <p class="lede">Nombre, textura y si todavía es nuevo. No forman parte del recetario.</p>
+  </div>
+  <div class="hero-actions">
+    <a class="button button-secondary" href="{% url 'baby:current' %}">Volver a la semana</a>
+  </div>
+</div>
+
+<form method="post" class="panel">
+  {% csrf_token %}
+  {{ form.as_p }}
+  <button class="button" type="submit">Añadir alimento</button>
+</form>
+
+{% if foods %}
+<ul class="recipe-list">
+  {% for food in foods %}
+  <li class="recipe-item">
+    <div>
+      <h2>{{ food.name }}</h2>
+      <p class="tag">{{ food.get_texture_display }}{% if food.is_new %} · nuevo{% else %} · ya lo toma{% endif %}{% if not food.is_active %} · archivado{% endif %}</p>
+    </div>
+    <form method="post" action="{% url 'baby:archive' pk=food.pk %}">
+      {% csrf_token %}
+      <button class="icon-btn" type="submit" aria-label="{% if food.is_active %}Archivar {{ food.name }}{% else %}Restaurar {{ food.name }}{% endif %}">
+        {% if food.is_active %}
+          {% include "includes/icon.html" with name="archive" %}
+        {% else %}
+          {% include "includes/icon.html" with name="restore" %}
+        {% endif %}
+      </button>
+    </form>
+  </li>
+  {% endfor %}
+</ul>
+{% else %}
+<p class="lede">Todavía no hay alimentos. Añade el primero para poder planear la semana.</p>
+{% endif %}
+{% endblock %}
