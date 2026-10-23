@@ -8,6 +8,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from apps.baby.selectors import baby_meals_on
+from apps.shopping.selectors import pending_count
 from apps.core.mixins import HouseholdRequiredMixin
 from apps.core.week import monday_of, weekday_label, weekday_short
 from apps.households.selectors import get_user_membership
@@ -72,6 +73,7 @@ class DashboardView(HouseholdRequiredMixin, TemplateView):
                 "active_recipes": list_active_recipes(self.request.household).count(),
                 "baby_lunch": baby.get("comida"),
                 "baby_snack": baby.get("merienda"),
+                "shopping_pending": pending_count(self.request.household),
             }
         )
         return context

@@ -1,7 +1,7 @@
-const CACHE_NAME = "nuestro-menu-static-v18";
+const CACHE_NAME = "nuestro-menu-static-v19";
 const STATIC_ASSETS = [
   "/static/css/app.css",
-  "/static/css/app.css?v=17",
+  "/static/css/app.css?v=18",
   "/static/js/app.js",
   "/static/js/app.js?v=14",
   "/static/js/htmx.min.js",

@@ -1,0 +1,21 @@
+<li class="shop-item{% if item.done %} is-done{% endif %}">
+  <form method="post" action="{% url 'shopping:toggle' item.pk %}">
+    {% csrf_token %}
+    <label class="check">
+      <input type="hidden" name="done" value="0">
+      <input type="checkbox" name="done" value="1"{% if item.done %} checked{% endif %} aria-label="{% if item.done %}Devolver {{ item.name }} a la lista{% else %}Marcar {{ item.name }} como comprado{% endif %}" onchange="this.form.requestSubmit()">
+      <span class="shop-name">{{ item.name }}</span>
+    </label>
+  </form>
+  {% if not item.done %}
+  <form method="post" action="{% url 'shopping:aisle' item.pk %}">
+    {% csrf_token %}
+    <label class="sr-only" for="aisle-{{ item.pk }}">Pasillo de {{ item.name }}</label>
+    <select id="aisle-{{ item.pk }}" class="field-input shop-aisle-select" name="aisle" onchange="this.form.requestSubmit()">
+      {% for value, label in aisles %}
+      <option value="{{ value }}"{% if item.aisle == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </form>
+  {% endif %}
+</li>

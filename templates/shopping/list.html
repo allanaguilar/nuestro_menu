@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Lista de compra · Nuestro Menú{% endblock %}
+{% block content %}
+<div class="page-head page-head-stack">
+  <div>
+    <h1>Lista de compra</h1>
+    {% if has_items %}
+    <p class="lede">{% if pending == 0 %}No queda nada{% elif pending == 1 %}Queda 1{% else %}Quedan {{ pending }}{% endif %}</p>
+    {% endif %}
+  </div>
+</div>
+
+{% if groups or cart %}
+<div class="shop-board">
+  {% for group in groups %}
+  <section class="shop-aisle" aria-labelledby="pasillo-{{ group.key }}">
+    <h2 id="pasillo-{{ group.key }}">{{ group.label }}</h2>
+    <ul class="shop-list">
+      {% for item in group.items %}
+      {% include "shopping/item.html" %}
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+
+  {% if cart %}
+  <section class="shop-aisle shop-cart" aria-labelledby="en-el-carro">
+    <h2 id="en-el-carro">En el carro</h2>
+    <ul class="shop-list">
+      {% for item in cart %}
+      {% include "shopping/item.html" %}
+      {% endfor %}
+    </ul>
+    <form method="post" action="{% url 'shopping:clear' %}">
+      {% csrf_token %}
+      <button class="button button-ghost" type="submit">Vaciar lo comprado</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+{% else %}
+<p class="lede">La lista está al día. Escribe lo que falte.</p>
+{% endif %}
+
+<form class="shop-add" method="post" action="{% url 'shopping:add' %}">
+  {% csrf_token %}
+  <label for="{{ form.name.id_for_label }}">Qué falta</label>
+  {{ form.name }}
+  {{ form.name.errors }}
+  <button class="button" type="submit">Añadir</button>
+</form>
+{% endblock %}

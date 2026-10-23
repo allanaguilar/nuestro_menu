@@ -10,7 +10,7 @@
     <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
     <link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/icon-192.png' %}">
     <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=17">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=18">
   </head>
   <body hx-boost="true">
     <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -25,6 +25,7 @@
           <a href="{% url 'core:dashboard' %}">Inicio</a>
           <a href="{% url 'meal_plans:current' %}">Menú semanal</a>
           <a href="{% url 'baby:current' %}">Bebé</a>
+          <a href="{% url 'shopping:list' %}">Lista de compra</a>
           <a href="{% url 'recipes:list' %}">Recetario</a>
           <a href="{% url 'preferences:list' %}">Preferencias</a>
           <a href="{% url 'meal_plans:history' %}">Historial</a>

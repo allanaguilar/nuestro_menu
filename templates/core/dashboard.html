@@ -49,6 +49,10 @@
   <a href="{% url 'baby:current' %}">Abrir el menú del bebé</a>
 </p>
 
+<p class="lede shopping-today">
+  <a href="{% url 'shopping:list' %}">Lista de compra</a>{% if shopping_pending == 1 %} · queda 1{% elif shopping_pending %} · quedan {{ shopping_pending }}{% endif %}.
+</p>
+
 <div class="toolbar action-row">
   <form method="post" action="{% url 'meal_plans:generate' week_start=week_start|date:'Y-m-d' %}">
     {% csrf_token %}
