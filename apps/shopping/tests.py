@@ -32,6 +32,7 @@ class ShoppingListTests(TestCase):
         page = self.client.get("/lista/")
         self.assertContains(page, "Leche")
         self.assertContains(page, "Sin pasillo")
+        self.assertLess(page.content.find(b"shop-add"), page.content.find(b"shop-board"))
         self.assertContains(page, "Queda 1")
         self.assertEqual(ShoppingItem.objects.get().normalized_name, "leche")
 
