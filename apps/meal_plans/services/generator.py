@@ -88,7 +88,7 @@ def eligible_recipes(household, week_start: date) -> list[Recipe]:
     )
     previous_ids = previous_week_recipe_ids(household, week_start)
     recipes = list(
-        Recipe.objects.filter(household=household, is_active=True).exclude(
+        Recipe.objects.filter(household=household, is_active=True, is_meal=True).exclude(
             id__in=avoided_ids
         )
     )

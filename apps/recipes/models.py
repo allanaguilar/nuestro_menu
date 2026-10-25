@@ -35,6 +35,11 @@ class Recipe(models.Model):
     ingredients = models.TextField("ingredientes", blank=True)
     steps = models.TextField("pasos", blank=True)
     notes = models.TextField("notas", blank=True)
+    is_meal = models.BooleanField(
+        "plato del día",
+        default=True,
+        help_text="Si lo quitas, la receta sigue en el recetario y no sale al elegir la comida de un día.",
+    )
     is_active = models.BooleanField("activa", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

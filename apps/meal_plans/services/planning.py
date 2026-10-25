@@ -30,6 +30,8 @@ def change_entry(household, week_start: date, day: date, recipe: Recipe, user=No
     if day < plan.week_start or day > plan.week_end:
         raise PlanningError("El día no pertenece a esta semana.")
     entry = plan.entries.filter(day=day).first()
+    if not recipe.is_meal and (entry is None or entry.recipe_id != recipe.id):
+        raise PlanningError("Esta receta es un apunte y no sale como comida de un día.")
     if entry is None:
         entry = MealPlanEntry(meal_plan=plan, day=day)
     entry.recipe = recipe

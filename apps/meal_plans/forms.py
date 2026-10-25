@@ -30,7 +30,7 @@ class ChangeDishForm(forms.Form):
     def __init__(self, *args, household=None, current=None, **kwargs):
         super().__init__(*args, **kwargs)
         recipes = Recipe.objects.filter(household=household).filter(
-            Q(is_active=True) | Q(pk=current)
+            Q(is_active=True, is_meal=True) | Q(pk=current)
         ).order_by("name")
         self.fields["recipe"].widget = DishSelect(recipes=recipes)
         self.fields["recipe"].queryset = recipes

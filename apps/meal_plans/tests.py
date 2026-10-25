@@ -160,6 +160,20 @@ class MealPlanTests(TestCase):
         self.assertEqual(plan.entries.get(day=tuesday).recipe_id, wednesday_entry.recipe_id)
         self.assertEqual(plan.entries.get(day=wednesday).recipe_id, wednesday_entry.recipe_id)
 
+    def test_a_note_recipe_is_not_offered_as_a_day_meal(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        generate_week_menu(self.household, self.week, self.allan, seed=1)
+        note = Recipe.objects.create(
+            household=self.household,
+            name="Tomate frito de prueba",
+            category=Recipe.Category.OTROS,
+            is_meal=False,
+        )
+        response = self.client.get(f"/menu/{self.week.isoformat()}/")
+        self.assertNotContains(response, note.name)
+        with self.assertRaises(Exception):
+            change_entry(self.household, self.week, self.week, note)
+
     def test_cannot_use_foreign_recipe(self):
         generate_week_menu(self.household, self.week, self.allan, seed=1)
         with self.assertRaises(Exception):

@@ -64,6 +64,7 @@ class RecipeTests(TestCase):
         self.assertContains(response, "Ingredientes")
         self.assertContains(response, "Pasos")
         self.assertContains(response, "recipe-text")
+        self.assertContains(response, "Sale como comida de un día")
         self.assertNotContains(response, "Notas")
         saved = self.client.post(
             f"/recetas/{self.recipe.id}/editar/",
@@ -79,14 +80,15 @@ class RecipeTests(TestCase):
         self.assertEqual(self.recipe.ingredient_lines, ["Lentejas", "Cebolla"])
         self.assertEqual(self.recipe.step_lines, ["Cocer 40 minutos."])
 
-    def test_duplicate_requires_confirmation(self):
+    def test_form_does_not_ask_to_confirm_a_similar_name(self):
         self.client.login(username="allan", password="clave-segura-1")
-        response = self.client.post(
+        page = self.client.get(f"/recetas/{self.recipe.id}/editar/")
+        self.assertNotContains(page, "nombre parecido")
+        saved = self.client.post(
             "/recetas/nueva/",
             {"name": "lentejas", "category": Recipe.Category.LEGUMBRES},
         )
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "nombre equivalente")
+        self.assertRedirects(saved, "/recetas/")
 
 
 class RecipeImportTests(TestCase):

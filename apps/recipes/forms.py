@@ -1,25 +1,20 @@
 from django import forms
 
 from apps.recipes.models import Recipe
-from apps.recipes.selectors import find_duplicates
 from apps.recipes.services import parse_recipe_import_text
 
 
 class RecipeForm(forms.ModelForm):
-    confirm_duplicate = forms.BooleanField(
-        required=False,
-        label="Guardar aunque exista una receta con un nombre parecido",
-    )
-
     class Meta:
         model = Recipe
-        fields = ("name", "category", "prep_time_minutes", "ingredients", "steps")
+        fields = ("name", "category", "prep_time_minutes", "ingredients", "steps", "is_meal")
         labels = {
             "name": "Nombre",
             "category": "Categoría",
             "prep_time_minutes": "Tiempo (minutos)",
             "ingredients": "Ingredientes",
             "steps": "Pasos",
+            "is_meal": "Sale como comida de un día",
         }
         widgets = {
             "ingredients": forms.Textarea(attrs={"class": "recipe-text", "rows": 8}),
@@ -33,23 +28,6 @@ class RecipeForm(forms.ModelForm):
             if not isinstance(field.widget, forms.CheckboxInput):
                 css = field.widget.attrs.get("class", "")
                 field.widget.attrs["class"] = f"{css} field-input".strip()
-
-    def clean(self):
-        cleaned = super().clean()
-        name = cleaned.get("name")
-        if name and self.household:
-            duplicates = find_duplicates(
-                self.household,
-                name,
-                exclude_id=self.instance.pk if self.instance.pk else None,
-            )
-            if duplicates.exists() and not cleaned.get("confirm_duplicate"):
-                names = ", ".join(duplicates.values_list("name", flat=True)[:5])
-                raise forms.ValidationError(
-                    "Ya hay una receta con un nombre equivalente "
-                    f"({names}). Confirma si quieres guardarla igualmente."
-                )
-        return cleaned
 
     def save(self, commit=True):
         recipe = super().save(commit=False)
