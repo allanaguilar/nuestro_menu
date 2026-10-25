@@ -134,6 +134,32 @@ class MealPlanTests(TestCase):
         plan.refresh_from_db()
         self.assertEqual(plan.status, MealPlan.Status.APPROVED)
 
+    def test_saving_one_day_also_saves_the_other_changes(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        plan = generate_week_menu(self.household, self.week, self.allan, seed=1)
+        tuesday = self.week + timedelta(days=1)
+        wednesday = self.week + timedelta(days=2)
+        monday_entry = plan.entries.get(day=self.week)
+        tuesday_entry = plan.entries.get(day=tuesday)
+        wednesday_entry = plan.entries.get(day=wednesday)
+        replacement = (
+            Recipe.objects.filter(household=self.household, is_active=True)
+            .exclude(pk__in=[monday_entry.recipe_id, tuesday_entry.recipe_id])
+            .order_by("name")
+            .first()
+        )
+        response = self.client.post(
+            f"/menu/{self.week.isoformat()}/dia/{self.week.isoformat()}/cambiar/",
+            {
+                "recipe": str(replacement.pk),
+                "tambien": f"{tuesday.isoformat()}|{wednesday_entry.recipe_id}",
+            },
+        )
+        self.assertRedirects(response, f"/menu/{self.week.isoformat()}/")
+        self.assertEqual(plan.entries.get(day=self.week).recipe_id, replacement.pk)
+        self.assertEqual(plan.entries.get(day=tuesday).recipe_id, wednesday_entry.recipe_id)
+        self.assertEqual(plan.entries.get(day=wednesday).recipe_id, wednesday_entry.recipe_id)
+
     def test_cannot_use_foreign_recipe(self):
         generate_week_menu(self.household, self.week, self.allan, seed=1)
         with self.assertRaises(Exception):

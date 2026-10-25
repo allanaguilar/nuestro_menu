@@ -1,4 +1,4 @@
-const CACHE_NAME = "nuestro-menu-static-v29";
+const CACHE_NAME = "nuestro-menu-static-v30";
 const STATIC_ASSETS = [
   "/static/css/app.css",
   "/static/css/app.css?v=28",
@@ -8,7 +8,7 @@ const STATIC_ASSETS = [
   "/static/vendor/fontawesome/webfonts/fa-solid-900.woff2",
   "/static/vendor/fontawesome/webfonts/fa-regular-400.woff2",
   "/static/js/app.js",
-  "/static/js/app.js?v=15",
+  "/static/js/app.js?v=16",
   "/static/js/htmx.min.js",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",

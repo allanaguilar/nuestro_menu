@@ -129,3 +129,19 @@ class BabyMenuTests(TestCase):
             BabyPlanEntry.objects.filter(day=self.today).values_list("slot", "food__name")
         )
         self.assertEqual(slots, {"comida": "Pollo", "merienda": "Batata"})
+
+    def test_alternative_uses_a_different_food_for_each_slot_and_saves_it(self):
+        batata = BabyFood.objects.create(household=self.household, name="Batata")
+        pollo = BabyFood.objects.create(household=self.household, name="Pollo")
+        set_baby_meal(self.household, self.week, self.today, BabyPlanEntry.Slot.LUNCH, pollo)
+        set_baby_meal(self.household, self.week, self.today, BabyPlanEntry.Slot.SNACK, pollo)
+        response = self.client.post(
+            f"/bebe/{self.week.isoformat()}/dia/{self.today.isoformat()}/alternativa/"
+        )
+        self.assertEqual(response.status_code, 302)
+        slots = dict(
+            BabyPlanEntry.objects.filter(day=self.today).values_list("slot", "food_id")
+        )
+        self.assertEqual(slots["comida"], batata.pk)
+        self.assertEqual(slots["merienda"], pollo.pk)
+        self.assertNotEqual(slots["comida"], slots["merienda"])

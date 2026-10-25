@@ -34,6 +34,26 @@ def _parse_week(value):
     return monday_of(parsed)
 
 
+def save_companion_days(request, household, week_start, skip_day):
+    saved = 0
+    for raw in request.POST.getlist("tambien"):
+        if "|" not in raw:
+            continue
+        day_text, recipe_id = raw.split("|", 1)
+        try:
+            day_date = datetime.strptime(day_text, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if day_date == skip_day:
+            continue
+        recipe = Recipe.objects.filter(pk=recipe_id, household=household).first()
+        if recipe is None:
+            continue
+        change_entry(household, week_start, day_date, recipe)
+        saved += 1
+    return saved
+
+
 class WeeklyMenuView(HouseholdRequiredMixin, TemplateView):
     template_name = "meal_plans/week.html"
 
@@ -59,6 +79,7 @@ class WeeklyMenuView(HouseholdRequiredMixin, TemplateView):
                 current=entry.recipe_id if entry else None,
                 auto_id=f"id_%s_{day.isoformat()}",
             )
+            form.fields["recipe"].widget.attrs["data-day"] = day.isoformat()
             if entry:
                 source = (
                     "elegido a mano"
@@ -123,7 +144,11 @@ class ChangeDishView(HouseholdRequiredMixin, View):
             return redirect("meal_plans:week", week_start=start.isoformat())
         try:
             change_entry(request.household, start, day_date, form.cleaned_data["recipe"])
-            messages.success(request, "Plato actualizado.")
+            others = save_companion_days(request, request.household, start, day_date)
+            if others:
+                messages.success(request, "Platos actualizados.")
+            else:
+                messages.success(request, "Plato actualizado.")
         except PlanningError as exc:
             messages.error(request, str(exc))
         if request.headers.get("HX-Request"):
@@ -139,6 +164,7 @@ class AlternativeDishView(HouseholdRequiredMixin, View):
         except ValueError as exc:
             raise Http404("Día no válido.") from exc
         try:
+            save_companion_days(request, request.household, start, day_date)
             alternative = suggest_alternative(request.household, start, day_date)
             change_entry(request.household, start, day_date, alternative)
             messages.success(request, f"Alternativa: {alternative.name}.")

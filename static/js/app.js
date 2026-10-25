@@ -26,6 +26,19 @@
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
     const button = event.submitter;
+    if (form.classList.contains("day-rail-pick")) {
+      document.querySelectorAll("form.day-rail-pick").forEach(function (other) {
+        if (other === form) return;
+        const select = other.querySelector("select.dish-select");
+        if (!select || !select.value || !select.dataset.day) return;
+        if (select.dataset.current && select.value === select.dataset.current) return;
+        const input = document.createElement("input");
+        input.type = "hidden";
+        input.name = "tambien";
+        input.value = select.dataset.day + "|" + select.value;
+        form.appendChild(input);
+      });
+    }
     const message = button && button.getAttribute("data-confirm");
     if (!message) {
       form.classList.add("is-loading");

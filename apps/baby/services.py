@@ -48,12 +48,16 @@ def suggest_baby_day(household, week_start, day):
     current = {}
     if plan:
         current = {entry.slot: entry.food_id for entry in plan.entries.filter(day=day)}
+    lunch = _next_food(foods, current.get(BabyPlanEntry.Slot.LUNCH))
+    snack = _next_food(foods, current.get(BabyPlanEntry.Slot.SNACK))
+    if lunch is not None and snack is not None and lunch.pk == snack.pk and len(foods) > 1:
+        snack = _next_food(foods, lunch.pk)
     changed = False
-    for slot in (BabyPlanEntry.Slot.LUNCH, BabyPlanEntry.Slot.SNACK):
-        nxt = _next_food(foods, current.get(slot))
-        if nxt is None:
-            continue
-        set_baby_meal(household, start, day, slot, nxt)
+    if lunch is not None:
+        set_baby_meal(household, start, day, BabyPlanEntry.Slot.LUNCH, lunch)
+        changed = True
+    if snack is not None:
+        set_baby_meal(household, start, day, BabyPlanEntry.Slot.SNACK, snack)
         changed = True
     if not changed:
         raise BabyPlanningError("No hay otro alimento.")
