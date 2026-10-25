@@ -32,6 +32,8 @@ class Recipe(models.Model):
         blank=True,
         validators=[MinValueValidator(1)],
     )
+    ingredients = models.TextField("ingredientes", blank=True)
+    steps = models.TextField("pasos", blank=True)
     notes = models.TextField("notas", blank=True)
     is_active = models.BooleanField("activa", default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -55,6 +57,18 @@ class Recipe(models.Model):
 
     def __str__(self):
         return self.name
+
+    @staticmethod
+    def text_lines(value):
+        return [line.strip() for line in (value or "").splitlines() if line.strip()]
+
+    @property
+    def ingredient_lines(self):
+        return self.text_lines(self.ingredients)
+
+    @property
+    def step_lines(self):
+        return self.text_lines(self.steps)
 
     def save(self, *args, **kwargs):
         self.normalized_name = normalize_recipe_name(self.name)

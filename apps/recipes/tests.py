@@ -58,6 +58,27 @@ class RecipeTests(TestCase):
             Recipe.objects.filter(household=self.household, normalized_name="arroz cubana").exists()
         )
 
+    def test_edit_form_keeps_long_recipe_fields_in_a_scroll_box(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        response = self.client.get(f"/recetas/{self.recipe.id}/editar/")
+        self.assertContains(response, "Ingredientes")
+        self.assertContains(response, "Pasos")
+        self.assertContains(response, "recipe-text")
+        self.assertNotContains(response, "Notas")
+        saved = self.client.post(
+            f"/recetas/{self.recipe.id}/editar/",
+            {
+                "name": "Lentejas",
+                "category": Recipe.Category.LEGUMBRES,
+                "ingredients": "Lentejas\nCebolla",
+                "steps": "Cocer 40 minutos.",
+            },
+        )
+        self.assertRedirects(saved, "/recetas/")
+        self.recipe.refresh_from_db()
+        self.assertEqual(self.recipe.ingredient_lines, ["Lentejas", "Cebolla"])
+        self.assertEqual(self.recipe.step_lines, ["Cocer 40 minutos."])
+
     def test_duplicate_requires_confirmation(self):
         self.client.login(username="allan", password="clave-segura-1")
         response = self.client.post(

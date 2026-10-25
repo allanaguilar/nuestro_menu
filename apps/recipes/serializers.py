@@ -15,6 +15,8 @@ class RecipeSerializer(serializers.ModelSerializer):
             "normalized_name",
             "category",
             "prep_time_minutes",
+            "ingredients",
+            "steps",
             "notes",
             "is_active",
             "created_at",

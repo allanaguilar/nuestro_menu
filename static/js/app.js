@@ -3,6 +3,15 @@
   window.__nuestroMenuReady = true;
 
   document.addEventListener("click", function (event) {
+    const day = event.target.closest(".day-open");
+    if (day) {
+      const panel = document.getElementById(day.getAttribute("aria-controls"));
+      if (!panel) return;
+      const open = panel.hidden;
+      panel.hidden = !open;
+      day.setAttribute("aria-expanded", open ? "true" : "false");
+      return;
+    }
     const toggle = event.target.closest(".nav-toggle");
     if (!toggle) return;
     const nav = document.getElementById("menu-principal");

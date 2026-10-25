@@ -180,7 +180,8 @@ label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
   margin: 0;
 }
 .day-rail {
-  display: flex;
+  display: grid;
+  grid-template-columns: 4.6rem minmax(0, 1fr);
   align-items: stretch;
   background: var(--card);
   border: 1px solid var(--line);
@@ -205,10 +206,72 @@ label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
   text-align: center;
   background: var(--bg-accent);
 }
+.day-open {
+  appearance: none;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+}
+.day-open:focus-visible { outline: 3px solid var(--focus); outline-offset: -3px; }
+.day-rail-hit {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 4.6rem minmax(0, 1fr);
+  align-items: stretch;
+  justify-items: stretch;
+  width: 100%;
+  height: auto;
+  text-align: inherit;
+}
+.day-rail-hit .day-rail-when {
+  width: auto;
+  height: auto;
+  align-self: stretch;
+}
+.day-recipe {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 0.85rem 1rem 1rem;
+  border-top: 1px solid var(--line);
+}
+.day-recipe[hidden] { display: none; }
+.day-recipe h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--olive-dark);
+}
+.day-recipe h4 {
+  margin: 0.8rem 0 0.2rem;
+  font-size: 1rem;
+  color: var(--olive-dark);
+}
+.day-recipe-meta { margin: 0.15rem 0 0; color: var(--muted); }
+.day-recipe ul { margin: 0.2rem 0 0; padding-left: 1.2rem; }
+.day-recipe li { margin: 0.2rem 0; }
+.day-recipe-lines p { margin: 0.35rem 0; }
+textarea.recipe-text {
+  min-height: 7.5rem;
+  max-height: 7.5rem;
+  overflow: auto;
+  resize: none;
+  line-height: 1.45;
+}
 .day-rail.is-today .day-rail-when { background: #ece6d4; }
 .day-rail-short {
   margin: 0;
   font-size: 1.05rem;
+  font-weight: 700;
   line-height: 1.2;
 }
 .day-rail-short abbr {
@@ -219,11 +282,12 @@ label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
   font-size: 0.8rem;
 }
 .day-rail-body {
+  display: block;
   flex: 1;
   min-width: 0;
   padding: 0.75rem 1rem 0.85rem;
 }
-.day-rail .dish { margin: 0 0 0.2rem; }
+.day-rail .dish { display: block; margin: 0 0 0.2rem; }
 .day-rail-pick {
   display: flex;
   flex-direction: column;
@@ -434,6 +498,8 @@ form.is-loading { opacity: 0.65; pointer-events: none; }
     border-radius: 12px;
   }
   .nav-logout button { width: 100%; justify-content: flex-start; }
+  .day-rail { grid-template-columns: 3.8rem minmax(0, 1fr); }
+  .day-rail-hit { grid-template-columns: 3.8rem minmax(0, 1fr); }
   .day-rail-when { width: 3.8rem; }
   .week-nav .button { font-size: 0.88rem; }
   .page-head { margin-bottom: 0.85rem; }

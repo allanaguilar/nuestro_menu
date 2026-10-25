@@ -37,7 +37,6 @@
     <div>
       <h2>{{ recipe.name }}</h2>
       <p class="tag">{{ recipe.get_category_display }}{% if recipe.prep_time_minutes %} · {{ recipe.prep_time_minutes }} min{% endif %}{% if not recipe.is_active %} · archivada{% endif %}</p>
-      {% if recipe.notes %}<p class="muted">{{ recipe.notes|truncatewords:18 }}</p>{% endif %}
     </div>
     <div class="icon-row">
       <a class="icon-btn" href="{% url 'recipes:update' recipe.pk %}" aria-label="Editar">

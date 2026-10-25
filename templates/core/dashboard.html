@@ -27,18 +27,51 @@
 <div class="day-list">
   {% for item in entries %}
   <article class="day-rail{% if item.is_today %} is-today{% endif %}">
+    {% if item.entry %}
+    <button type="button" class="day-open day-rail-hit" aria-expanded="false" aria-controls="receta-{{ item.date|date:'Y-m-d' }}">
+      <span class="day-rail-when">
+        <span class="day-rail-short">{{ item.short }}</span>
+        <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"j M" }}</time>
+      </span>
+      <span class="day-rail-body">
+        <span class="dish">{{ item.entry.recipe.name }}</span>
+        <span class="tag">{{ item.entry.recipe.get_category_display }}</span>
+      </span>
+    </button>
+    <section id="receta-{{ item.date|date:'Y-m-d' }}" class="day-recipe" hidden>
+      <h3>{{ item.entry.recipe.name }}</h3>
+      <p class="day-recipe-meta">{{ item.entry.recipe.get_category_display }}{% if item.entry.recipe.prep_time_minutes %} · {{ item.entry.recipe.prep_time_minutes }} min{% endif %}</p>
+      {% if item.entry.recipe.ingredient_lines or item.entry.recipe.step_lines %}
+        {% if item.entry.recipe.ingredient_lines %}
+        <h4>Ingredientes</h4>
+        <ul>
+          {% for line in item.entry.recipe.ingredient_lines %}
+          <li>{{ line }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+        {% if item.entry.recipe.step_lines %}
+        <h4>Pasos</h4>
+        <div class="day-recipe-lines">
+          {% for line in item.entry.recipe.step_lines %}
+          <p>{{ line }}</p>
+          {% endfor %}
+        </div>
+        {% endif %}
+      {% else %}
+      <p>Esta receta todavía no tiene ingredientes ni pasos.</p>
+      {% endif %}
+      <a href="{% url 'recipes:update' item.entry.recipe.pk %}">Editar en el recetario</a>
+    </section>
+    {% else %}
     <div class="day-rail-when">
       <h2 class="day-rail-short"><abbr title="{{ item.label }}">{{ item.short }}</abbr></h2>
       <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"j M" }}</time>
     </div>
     <div class="day-rail-body">
-      {% if item.entry %}
-        <p class="dish">{{ item.entry.recipe.name }}</p>
-        <p class="tag">{{ item.entry.recipe.get_category_display }}</p>
-      {% else %}
-        <p class="dish dish-empty">Sin plato todavía</p>
-      {% endif %}
+      <p class="dish dish-empty">Sin plato todavía</p>
     </div>
+    {% endif %}
   </article>
   {% endfor %}
 </div>

@@ -13,15 +13,17 @@ class RecipeForm(forms.ModelForm):
 
     class Meta:
         model = Recipe
-        fields = ("name", "category", "prep_time_minutes", "notes")
+        fields = ("name", "category", "prep_time_minutes", "ingredients", "steps")
         labels = {
             "name": "Nombre",
             "category": "Categoría",
-            "prep_time_minutes": "Tiempo de preparación (minutos)",
-            "notes": "Notas",
+            "prep_time_minutes": "Tiempo (minutos)",
+            "ingredients": "Ingredientes",
+            "steps": "Pasos",
         }
         widgets = {
-            "notes": forms.Textarea(attrs={"rows": 4}),
+            "ingredients": forms.Textarea(attrs={"class": "recipe-text", "rows": 8}),
+            "steps": forms.Textarea(attrs={"class": "recipe-text", "rows": 8}),
         }
 
     def __init__(self, *args, household=None, **kwargs):

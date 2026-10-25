@@ -176,3 +176,22 @@ class MealPlanTests(TestCase):
         self.assertContains(response, " · propuesto")
         self.assertContains(response, "selected")
         self.assertNotContains(response, 'class="dish"')
+
+    def test_day_button_shows_the_recipe(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        plan = generate_week_menu(self.household, self.week, self.allan, seed=1)
+        entry = plan.entries.select_related("recipe").order_by("day").first()
+        recipe = entry.recipe
+        recipe.ingredients = "600 g de carne\n4 patatas"
+        recipe.steps = "Dorar la carne."
+        recipe.prep_time_minutes = 40
+        recipe.save()
+        response = self.client.get(f"/menu/{self.week.isoformat()}/")
+        self.assertContains(response, "day-open")
+        self.assertContains(response, "600 g de carne")
+        self.assertContains(response, "Dorar la carne.")
+        self.assertContains(response, "40 min")
+        self.assertContains(response, "Editar en el recetario")
+        home = self.client.get("/inicio/")
+        self.assertContains(home, "day-open")
+        self.assertContains(home, "600 g de carne")
