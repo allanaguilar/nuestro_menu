@@ -8,7 +8,6 @@ from apps.core.mixins import HouseholdRequiredMixin, get_owned_or_404
 from apps.preferences.selectors import preference_map
 from apps.preferences.services import toggle_favorite
 from apps.recipes.forms import RecipeForm, RecipeImportForm
-from apps.recipes.models import Recipe
 from apps.recipes.selectors import recipes_for_household, search_recipes
 from apps.recipes.services import archive_recipe, import_recipes_from_text, reactivate_recipe
 
@@ -19,20 +18,16 @@ class RecipeListView(HouseholdRequiredMixin, ListView):
     paginate_by = 30
 
     def get_queryset(self):
+        show_archived = self.request.GET.get("archivo") == "1"
         return search_recipes(
             self.request.household,
             query=self.request.GET.get("q", ""),
-            category=self.request.GET.get("categoria", ""),
-            sort=self.request.GET.get("orden", "name"),
-            include_archived=self.request.GET.get("archivo") == "1",
+            archived_only=show_archived,
         )
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["categories"] = Recipe.Category.choices
         context["query"] = self.request.GET.get("q", "")
-        context["selected_category"] = self.request.GET.get("categoria", "")
-        context["sort"] = self.request.GET.get("orden", "name")
         context["include_archived"] = self.request.GET.get("archivo") == "1"
         prefs = preference_map(
             self.request.user, [recipe.id for recipe in context["recipes"]]

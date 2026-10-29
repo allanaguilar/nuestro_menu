@@ -406,9 +406,26 @@ textarea.recipe-text {
 }
 .status-approved { background: #dce8d8; color: var(--ok); }
 .status-draft { background: #f3e3d2; }
-.toolbar, .inline-form, .filters, .pref-form, .hero-actions {
+.toolbar, .inline-form, .pref-form, .hero-actions {
   display: flex; flex-wrap: wrap; gap: 0.7rem; align-items: end; margin: 1rem 0;
 }
+.filters {
+  margin: 0 0 1rem;
+}
+.filters .search-field {
+  position: relative;
+  width: 100%;
+  margin: 0;
+}
+.filters .search-field .icon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.filters .search-field .field-input { padding-left: 2.35rem; }
 .hero-actions {
   justify-content: center;
   align-items: center;

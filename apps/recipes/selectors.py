@@ -16,9 +16,13 @@ def recipe_count(household):
     return recipes_for_household(household).count()
 
 
-def search_recipes(household, *, query="", category="", sort="name", include_archived=False):
+def search_recipes(
+    household, *, query="", category="", sort="name", include_archived=False, archived_only=False
+):
     qs = recipes_for_household(household)
-    if not include_archived:
+    if archived_only:
+        qs = qs.filter(is_active=False)
+    elif not include_archived:
         qs = qs.filter(is_active=True)
     if query:
         qs = qs.filter(

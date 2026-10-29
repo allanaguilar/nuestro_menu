@@ -36,7 +36,28 @@ class RecipeTests(TestCase):
         response = self.client.get("/recetas/")
         self.assertContains(response, "Lentejas")
         self.assertContains(response, "Vista previa de Lentejas")
+        self.assertContains(response, "Archivadas")
+        self.assertContains(response, 'aria-pressed="false"')
+        self.assertNotContains(response, "Filtrar")
+        self.assertNotContains(response, "Categoría")
+        self.assertNotContains(response, "Más recientes")
         self.assertNotContains(response, "Secreto")
+
+    def test_archived_check_shows_only_archived(self):
+        Recipe.objects.create(
+            household=self.household,
+            name="Sopa vieja",
+            category=Recipe.Category.OTROS,
+            is_active=False,
+        )
+        self.client.login(username="allan", password="clave-segura-1")
+        archived = self.client.get("/recetas/?archivo=1")
+        self.assertContains(archived, "Sopa vieja")
+        self.assertContains(archived, 'aria-pressed="true"')
+        self.assertNotContains(archived, "Vista previa de Lentejas")
+        active = self.client.get("/recetas/")
+        self.assertContains(active, "Vista previa de Lentejas")
+        self.assertNotContains(active, "Sopa vieja")
 
     def test_cannot_edit_foreign_recipe(self):
         self.client.login(username="allan", password="clave-segura-1")

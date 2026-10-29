@@ -70,6 +70,16 @@
     const form = event.detail && event.detail.elt;
     if (form && form.classList) form.classList.remove("is-loading");
   }
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Enter") return;
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.name !== "q") return;
+    const form = input.closest("form.filters");
+    if (!form) return;
+    event.preventDefault();
+    form.requestSubmit();
+  });
+
   document.addEventListener("change", function (event) {
     const select = event.target;
     if (!(select instanceof HTMLSelectElement) || !select.classList.contains("baby-food-select")) return;
