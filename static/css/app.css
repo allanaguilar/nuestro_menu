@@ -417,7 +417,9 @@ textarea.recipe-text {
   border-top: 1px solid var(--line);
 }
 .shop-item form { margin: 0; min-width: 0; }
-.shop-item .check { margin: 0; flex: 1; }
+.shop-item form:first-child { flex: 1; }
+.shop-item .check { margin: 0; width: 100%; min-width: 0; align-items: center; }
+.shop-copy { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .shop-item.is-done .shop-name { text-decoration: line-through; color: var(--muted); }
 .shop-aisle-select { width: auto; max-width: 9.5rem; min-width: 8.2rem; }
 .shop-cart form {
@@ -425,8 +427,9 @@ textarea.recipe-text {
   justify-content: center;
   margin-top: 0.8rem;
 }
-.shop-sync { margin: 0.2rem 0 0; text-align: center; color: var(--muted); }
-.shop-who { margin: 0.05rem 0 0.35rem 1.9rem; color: var(--muted); }
+.shop-sync { margin: 0.15rem 0 0; text-align: center; color: var(--muted); }
+.page-head .shop-sync + .lede { margin-top: 0.45rem; }
+.shop-who { margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.2; font-weight: 400; overflow-wrap: anywhere; }
 .shop-sync[hidden], #shop-pending[hidden] { display: none; }
 .shop-add {
   width: min(40rem, 100%);
