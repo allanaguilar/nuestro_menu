@@ -11,9 +11,14 @@ from apps.shopping.selectors import shopping_page, touch_presence
 from apps.shopping.services import ShoppingError, add_shopping_item, clear_bought
 
 
+def shop_client_key(request):
+    return (request.headers.get("X-Shop-Client") or "")[:64]
+
+
 def shop_state(request, form=None):
-    touch_presence(request.household, request.user)
-    context = shopping_page(request.household, request.user, form)
+    client_key = shop_client_key(request)
+    touch_presence(request.household, request.user, client_key)
+    context = shopping_page(request.household, request.user, form, client_key)
     context["html"] = render_to_string("shopping/live.html", context, request=request)
     return context
 

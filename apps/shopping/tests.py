@@ -103,14 +103,22 @@ class ShoppingListTests(TestCase):
         self.partner.save(update_fields=["first_name"])
         self.client.login(username="pareja", password="clave-segura-1")
         self.client.post("/lista/anadir/", {"name": "Detergente"})
-        self.client.get("/lista/")
+        self.client.get("/lista/", HTTP_X_SHOP_CLIENT="telefono-naiara")
         self.client.login(username="allan", password="clave-segura-1")
-        page = self.client.get("/lista/")
+        page = self.client.get("/lista/", HTTP_X_SHOP_CLIENT="telefono-allan")
         self.assertContains(page, "Naiara también la tiene abierta.")
         self.assertContains(page, "Naiara lo añadió ahora")
         self.client.post("/lista/anadir/", {"name": "Leche"})
-        own = self.client.get("/lista/")
-        self.assertNotContains(own, "Allan lo añadió ahora")
+        own = self.client.get("/lista/", HTTP_X_SHOP_CLIENT="telefono-allan")
+        self.assertContains(own, "allan lo añadió ahora")
+
+    def test_two_phones_of_the_same_account_see_each_other(self):
+        self.client.get("/lista/fragmento/", HTTP_X_SHOP="1", HTTP_X_SHOP_CLIENT="telefono-a")
+        other = self.client.get(
+            "/lista/fragmento/", HTTP_X_SHOP="1", HTTP_X_SHOP_CLIENT="telefono-b"
+        )
+        self.assertEqual(other.status_code, 200)
+        self.assertIn("otro teléfono", other.json()["viewers"])
 
     def test_home_links_to_the_list(self):
         self.client.post("/lista/anadir/", {"name": "Pan"})

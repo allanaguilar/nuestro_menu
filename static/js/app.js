@@ -213,6 +213,21 @@
 
   let shopBusy = false;
 
+  function shopClient() {
+    const key = "nuestro-menu-shop";
+    let id = "";
+    try {
+      id = window.sessionStorage.getItem(key) || "";
+      if (!id) {
+        id = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        window.sessionStorage.setItem(key, id);
+      }
+    } catch (err) {
+      id = "este";
+    }
+    return id;
+  }
+
   function updateShopStatus(data) {
     const pending = document.getElementById("shop-pending");
     const viewers = document.getElementById("shop-viewers");
@@ -229,8 +244,10 @@
   function replaceShop(url, body) {
     const live = document.getElementById("shop-live");
     if (!live) return;
+    const focused = document.activeElement;
+    const holdBoard = !body && focused && live.contains(focused) && focused.tagName === "SELECT";
     shopBusy = true;
-    const options = { headers: { "X-Shop": "1" } };
+    const options = { headers: { "X-Shop": "1", "X-Shop-Client": shopClient() } };
     if (body) {
       options.method = "POST";
       options.body = body;
@@ -239,7 +256,7 @@
       .then(function (response) { return response.json(); })
       .then(function (data) {
         updateShopStatus(data);
-        if (data.html && data.revision !== live.dataset.revision) {
+        if (!holdBoard && data.html && data.revision !== live.dataset.revision) {
           live.innerHTML = data.html;
           live.dataset.revision = data.revision;
         }
@@ -251,14 +268,14 @@
   function pollShop() {
     const live = document.getElementById("shop-live");
     if (!live || shopBusy || !live.dataset.fragment) return;
-    if (document.activeElement && live.contains(document.activeElement)) return;
     replaceShop(live.dataset.fragment);
   }
 
   let shopTimer = 0;
   function watchShop() {
     if (shopTimer || !document.getElementById("shop-live")) return;
-    shopTimer = window.setInterval(pollShop, 8000);
+    pollShop();
+    shopTimer = window.setInterval(pollShop, 4000);
   }
   watchShop();
   document.addEventListener("htmx:afterSettle", watchShop);

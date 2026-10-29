@@ -6,7 +6,7 @@ from django.utils import timezone
 from apps.shopping.models import ShoppingItem, ShoppingPresence
 
 RECENT_ADD = timedelta(minutes=15)
-PRESENCE_WINDOW = timedelta(seconds=30)
+PRESENCE_WINDOW = timedelta(seconds=90)
 
 
 def person_label(user):
@@ -22,29 +22,38 @@ def pending_sentence(count):
     return f"Quedan {count}"
 
 
-def touch_presence(household, user):
+def touch_presence(household, user, client_key):
+    if not client_key:
+        return
     ShoppingPresence.objects.update_or_create(
         household=household,
         user=user,
+        client_key=client_key[:64],
         defaults={"last_seen": timezone.now()},
     )
 
 
-def viewers_sentence(household, user):
+def viewers_sentence(household, user, client_key=""):
     cutoff = timezone.now() - PRESENCE_WINDOW
-    names = [
-        person_label(row.user)
-        for row in ShoppingPresence.objects.filter(
-            household=household, last_seen__gte=cutoff
-        )
-        .exclude(user=user)
-        .select_related("user")
-    ]
-    if not names:
-        return ""
+    rows = ShoppingPresence.objects.filter(
+        household=household, last_seen__gte=cutoff
+    ).select_related("user")
+    names = []
+    other_phone = False
+    for row in rows:
+        if row.user_id != user.id:
+            label = person_label(row.user)
+            if label not in names:
+                names.append(label)
+        elif client_key and row.client_key and row.client_key != client_key:
+            other_phone = True
     if len(names) == 1:
         return f"{names[0]} también la tiene abierta."
-    return f"{' y '.join(names)} también la tienen abierta."
+    if names:
+        return f"{' y '.join(names)} también la tienen abierta."
+    if other_phone:
+        return "También la tienes abierta en otro teléfono."
+    return ""
 
 
 def items_revision(household):
@@ -55,7 +64,7 @@ def items_revision(household):
     return f"{stamp['count']}:{latest}"
 
 
-def shopping_page(household, user, form=None):
+def shopping_page(household, user, form=None, client_key=""):
     from apps.shopping.forms import AddShoppingItemForm
 
     items = list(
@@ -66,12 +75,7 @@ def shopping_page(household, user, form=None):
     recent = timezone.now() - RECENT_ADD
     for item in items:
         item.fresh_from = ""
-        if (
-            item.added_by_id
-            and user is not None
-            and item.added_by_id != user.id
-            and item.created_at >= recent
-        ):
+        if item.added_by_id and item.created_at >= recent:
             item.fresh_from = person_label(item.added_by)
     pending = [item for item in items if not item.done]
     cart = [item for item in items if item.done]
@@ -92,7 +96,7 @@ def shopping_page(household, user, form=None):
         "aisles": ShoppingItem.Aisle.choices,
         "form": form or AddShoppingItemForm(),
         "has_items": bool(items),
-        "viewers": viewers_sentence(household, user) if user is not None else "",
+        "viewers": viewers_sentence(household, user, client_key) if user is not None else "",
         "revision": items_revision(household),
     }
 

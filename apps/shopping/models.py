@@ -74,12 +74,13 @@ class ShoppingPresence(models.Model):
         on_delete=models.CASCADE,
         related_name="shopping_presence",
     )
+    client_key = models.CharField(max_length=64, blank=True, default="")
     last_seen = models.DateTimeField()
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["household", "user"],
+                fields=["household", "user", "client_key"],
                 name="uniq_shopping_presence",
             )
         ]
