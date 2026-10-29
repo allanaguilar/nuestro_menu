@@ -18,7 +18,7 @@ class PlanningError(GeneratorError):
 
 
 @transaction.atomic
-def change_entry(household, week_start: date, day: date, recipe: Recipe, user=None):
+def change_entry(household, week_start: date, day: date, recipe: Recipe, user=None, source=None):
     week_start = monday_of(week_start)
     if recipe.household_id != household.id:
         raise PlanningError("La receta no pertenece a este hogar.")
@@ -35,7 +35,7 @@ def change_entry(household, week_start: date, day: date, recipe: Recipe, user=No
     if entry is None:
         entry = MealPlanEntry(meal_plan=plan, day=day)
     entry.recipe = recipe
-    entry.selection_source = MealPlanEntry.Source.MANUAL
+    entry.selection_source = source or MealPlanEntry.Source.MANUAL
     entry.save()
     if plan.status == MealPlan.Status.APPROVED:
         plan.status = MealPlan.Status.DRAFT

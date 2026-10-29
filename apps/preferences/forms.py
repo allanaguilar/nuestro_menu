@@ -6,10 +6,9 @@ from apps.preferences.models import RecipePreference
 class PreferenceForm(forms.ModelForm):
     class Meta:
         model = RecipePreference
-        fields = ("rating", "is_favorite", "is_avoided")
+        fields = ("rating", "is_avoided")
         labels = {
             "rating": "Puntuación",
-            "is_favorite": "Favorita para mí",
             "is_avoided": "Evitar en el menú",
         }
 

@@ -64,6 +64,19 @@ class MealPlanTests(TestCase):
         with self.assertRaises(ValidationError):
             plan.save()
 
+    def test_alternative_stays_proposed(self):
+        generate_week_menu(self.household, self.week, self.allan, seed=1)
+        day = self.week
+        self.client.login(username="allan", password="clave-segura-1")
+        response = self.client.post(
+            f"/menu/{self.week.isoformat()}/dia/{day.isoformat()}/alternativa/",
+            follow=True,
+        )
+        self.assertContains(response, "Alternativa:")
+        entry = MealPlanEntry.objects.get(meal_plan__household=self.household, day=day)
+        self.assertEqual(entry.selection_source, MealPlanEntry.Source.ALGORITHM)
+        self.assertContains(response, "propuesto")
+
     def test_insufficient_recipes(self):
         Recipe.objects.filter(household=self.household).delete()
         make_recipes(self.household, 6)

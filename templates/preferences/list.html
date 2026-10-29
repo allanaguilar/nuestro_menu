@@ -2,7 +2,7 @@
 {% block title %}Preferencias{% endblock %}
 {% block content %}
 <h1>Preferencias</h1>
-<p class="lede">Cada persona marca favoritos, puntuación y platos que prefiere evitar. Si alguien evita una receta, el generador no la propone.</p>
+<p class="lede">Puntúa y marca los platos que preferís evitar. El favorito se marca en la receta. Si alguien evita un plato, el generador no lo propone. Los cambios se guardan al momento.</p>
 {% if rows %}
 <ul class="preference-list">
   {% for row in rows %}
@@ -14,9 +14,7 @@
       <input type="hidden" name="recipe_id" value="{{ row.recipe.id }}">
       {{ row.form.rating.label_tag }}
       {{ row.form.rating }}
-      <label class="check">{{ row.form.is_favorite }} {{ row.form.is_favorite.label }}</label>
       <label class="check">{{ row.form.is_avoided }} {{ row.form.is_avoided.label }}</label>
-      <button class="button" type="submit">Guardar</button>
     </form>
   </li>
   {% endfor %}

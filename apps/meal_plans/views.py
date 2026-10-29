@@ -172,7 +172,13 @@ class AlternativeDishView(HouseholdRequiredMixin, View):
         try:
             save_companion_days(request, request.household, start, day_date)
             alternative = suggest_alternative(request.household, start, day_date)
-            change_entry(request.household, start, day_date, alternative)
+            change_entry(
+                request.household,
+                start,
+                day_date,
+                alternative,
+                source=MealPlanEntry.Source.ALGORITHM,
+            )
             messages.success(request, f"Alternativa: {alternative.name}.")
         except PlanningError as exc:
             messages.error(request, str(exc))

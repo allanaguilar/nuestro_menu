@@ -2,11 +2,21 @@
 {% block title %}Crear cuenta · Nuestro Menú{% endblock %}
 {% block content %}
 <section class="auth-card">
+  {% if invited_household %}
+  <h1>Únete a {{ invited_household }}</h1>
+  <p class="lede">Elige un usuario y una contraseña. El correo es opcional.</p>
+  {% elif invited %}
+  <h1>Únete al hogar</h1>
+  <p class="lede">Elige un usuario y una contraseña. El correo es opcional.</p>
+  {% else %}
   <h1>Crear cuenta</h1>
   <p class="lede">El primero crea el hogar. El segundo entra con un enlace de invitación.</p>
+  {% endif %}
   <form method="post" novalidate hx-boost="false">
     {% csrf_token %}
-    {{ form.non_field_errors }}
+    {% for error in form.non_field_errors %}
+    <p class="message message-error" role="alert">{{ error }}</p>
+    {% endfor %}
     {% for field in form %}
       {% if field.is_hidden %}
         {{ field }}
@@ -14,11 +24,15 @@
         <label for="{{ field.id_for_label }}">{{ field.label }}</label>
         {{ field }}
         {% if field.help_text %}<p class="hint">{{ field.help_text }}</p>{% endif %}
-        {{ field.errors }}
+        {% for error in field.errors %}
+        <p class="message message-error" role="alert">{{ error }}</p>
+        {% endfor %}
       {% endif %}
     {% endfor %}
-    <button class="button" type="submit">Crear cuenta</button>
+    <div class="auth-actions">
+      <button class="button" type="submit">Crear cuenta</button>
+      <p>¿Ya tienes cuenta? <a href="{% url 'login' %}">Entrar</a></p>
+    </div>
   </form>
-  <p>¿Ya tienes cuenta? <a href="{% url 'login' %}">Entrar</a></p>
 </section>
 {% endblock %}

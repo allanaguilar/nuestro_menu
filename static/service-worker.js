@@ -1,14 +1,14 @@
-const CACHE_NAME = "nuestro-menu-static-v37";
+const CACHE_NAME = "nuestro-menu-static-v38";
 const STATIC_ASSETS = [
   "/static/css/app.css",
-  "/static/css/app.css?v=33",
+  "/static/css/app.css?v=34",
   "/static/vendor/fontawesome/css/fontawesome.min.css",
   "/static/vendor/fontawesome/css/solid.min.css",
   "/static/vendor/fontawesome/css/regular.min.css",
   "/static/vendor/fontawesome/webfonts/fa-solid-900.woff2",
   "/static/vendor/fontawesome/webfonts/fa-regular-400.woff2",
   "/static/js/app.js",
-  "/static/js/app.js?v=20",
+  "/static/js/app.js?v=21",
   "/static/js/htmx.min.js",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",

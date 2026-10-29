@@ -29,7 +29,11 @@
     <button class="button" type="submit">Crear invitación</button>
   </form>
   {% if invite_url %}
-  <p class="notice">Enlace activo: <code>{{ invite_url }}</code></p>
+  <div class="invite-box notice">
+    <p>Enlace activo</p>
+    <code id="invite-url">{{ invite_url }}</code>
+    <button class="button button-secondary copy-invite" type="button">Copiar enlace</button>
+  </div>
   {% endif %}
   {% else %}
   <p>Solo quien creó el hogar puede generar invitaciones.</p>

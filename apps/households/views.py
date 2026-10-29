@@ -43,10 +43,34 @@ class SignUpView(FormView):
             return redirect("core:dashboard")
         return super().dispatch(request, *args, **kwargs)
 
+    def _invite_token(self):
+        if self.request.method == "POST":
+            return (self.request.POST.get("invite_token") or "").strip()
+        return (self.request.GET.get("token") or "").strip()
+
+    def _invite(self):
+        token = self._invite_token()
+        if not token:
+            return None
+        return (
+            HouseholdInvite.objects.select_related("household")
+            .filter(token=token)
+            .first()
+        )
+
     def get_initial(self):
         initial = super().get_initial()
-        initial["invite_token"] = self.request.GET.get("token", "")
+        initial["invite_token"] = self._invite_token()
         return initial
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        invite = self._invite()
+        context["invited"] = bool(self._invite_token())
+        context["invited_household"] = (
+            invite.household.name if invite and invite.is_valid else ""
+        )
+        return context
 
     def form_valid(self, form):
         user = form.save()

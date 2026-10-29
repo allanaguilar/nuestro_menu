@@ -44,11 +44,11 @@ class RecipeImportForm(forms.Form):
             attrs={
                 "rows": 16,
                 "class": "field-input import-text",
-                "placeholder": "Patatas a la riojana\nPasta con carne | pasta\nSalmón con verduras | pescado | Airfryer",
+                "placeholder": "Patatas a la riojana\nPasta con carne | pasta\nSalmón con verduras | pescado",
             }
         ),
         help_text=(
-            "Una receta por línea. Opcional: Nombre | categoría | notas. "
+            "Una receta por línea. Opcional: Nombre | categoría. "
             "Si no pones categoría, se infiere por el nombre."
         ),
     )

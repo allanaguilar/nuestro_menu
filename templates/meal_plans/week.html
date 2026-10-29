@@ -48,6 +48,7 @@
       <button type="button" class="day-open" aria-expanded="false" aria-controls="receta-{{ item.date|date:'Y-m-d' }}">
         <h2 class="day-rail-short"><abbr title="{{ item.label }}">{{ item.short }}</abbr></h2>
         <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"j M" }}</time>
+        <span class="day-chevron" aria-hidden="true">{% include "includes/icon.html" with name="chevron" %}</span>
       </button>
       {% else %}
       <h2 class="day-rail-short"><abbr title="{{ item.label }}">{{ item.short }}</abbr></h2>

@@ -46,6 +46,59 @@ class HouseholdTests(TestCase):
         with self.assertRaises(InviteError):
             accept_invite(self.member, invite.token)
 
+    def test_active_invite_can_be_copied(self):
+        create_invite(self.household, self.owner)
+        self.client.login(username="allan", password="clave-segura-1")
+        response = self.client.get("/hogar/")
+        self.assertContains(response, "Copiar enlace")
+        self.assertContains(response, 'id="invite-url"')
+
+    def test_invite_signup_asks_only_for_the_account(self):
+        invite = create_invite(self.household, self.owner)
+        page = self.client.get(f"/cuentas/registro/?token={invite.token}")
+        self.assertContains(page, f"Únete a {self.household.name}")
+        self.assertContains(page, 'class="auth-actions"')
+        self.assertContains(page, "Usuario")
+        self.assertContains(page, "Contraseña")
+        self.assertContains(page, "Correo")
+        self.assertNotContains(page, "Nombre del hogar")
+        self.assertNotContains(page, "Repetir contraseña")
+        self.assertNotContains(page, ">Nombre<")
+        self.assertNotContains(page, "150 car")
+        response = self.client.post(
+            "/cuentas/registro/",
+            {
+                "username": "invitada",
+                "password1": "clave-segura-1",
+                "email": "invitada@example.com",
+                "invite_token": invite.token,
+            },
+        )
+        self.assertRedirects(response, "/inicio/")
+        user = User.objects.get(username="invitada")
+        self.assertTrue(user.check_password("clave-segura-1"))
+        self.assertEqual(user.email, "invitada@example.com")
+        self.assertTrue(
+            HouseholdMembership.objects.filter(
+                household=self.household, user=user
+            ).exists()
+        )
+
+    def test_short_invite_password_explains_why(self):
+        invite = create_invite(self.household, self.owner)
+        response = self.client.post(
+            "/cuentas/registro/",
+            {
+                "username": "mario",
+                "password1": "mario",
+                "invite_token": invite.token,
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "demasiado corta")
+        self.assertContains(response, 'role="alert"')
+        self.assertFalse(User.objects.filter(username="mario").exists())
+
     def test_settings_requires_login(self):
         response = self.client.get("/hogar/")
         self.assertEqual(response.status_code, 302)

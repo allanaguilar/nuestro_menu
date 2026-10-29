@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/fontawesome.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/solid.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/regular.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=33">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=34">
   </head>
   <body hx-boost="true">
     <a class="skip-link" href="#contenido">Saltar al contenido</a>
@@ -30,10 +30,17 @@
           <a href="{% url 'baby:current' %}">{% include "includes/icon.html" with name="baby" %}Bebé</a>
           <a href="{% url 'shopping:list' %}">{% include "includes/icon.html" with name="cart" %}Lista de compra</a>
           <a href="{% url 'recipes:list' %}">{% include "includes/icon.html" with name="book" %}Recetario</a>
-          <a href="{% url 'preferences:list' %}">{% include "includes/icon.html" with name="sliders" %}Preferencias</a>
-          <a href="{% url 'meal_plans:history' %}">{% include "includes/icon.html" with name="clock" %}Historial</a>
-          <a href="{% url 'households:settings' %}">{% include "includes/icon.html" with name="household" %}Hogar</a>
-          <a href="{% url 'core:install' %}">{% include "includes/icon.html" with name="download" %}Instalar</a>
+          <div class="nav-more">
+            <button type="button" class="nav-more-toggle" aria-expanded="false" aria-controls="menu-mas">
+              {% include "includes/icon.html" with name="other" %}Más
+            </button>
+            <div id="menu-mas" class="nav-more-panel" hidden>
+              <a href="{% url 'preferences:list' %}">{% include "includes/icon.html" with name="sliders" %}Preferencias</a>
+              <a href="{% url 'meal_plans:history' %}">{% include "includes/icon.html" with name="clock" %}Historial</a>
+              <a href="{% url 'households:settings' %}">{% include "includes/icon.html" with name="household" %}Hogar</a>
+              <a href="{% url 'core:install' %}">{% include "includes/icon.html" with name="download" %}Instalar</a>
+            </div>
+          </div>
           <form class="nav-logout" method="post" action="{% url 'logout' %}" hx-boost="false">
             {% csrf_token %}
             <button type="submit">{% include "includes/icon.html" with name="logout" %}Salir</button>
@@ -56,6 +63,6 @@
       <div class="wrap">Almuerzos de lunes a domingo, pensados para dos.</div>
     </footer>
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
-    <script src="{% static 'js/app.js' %}?v=20" defer></script>
+    <script src="{% static 'js/app.js' %}?v=21" defer></script>
   </body>
 </html>

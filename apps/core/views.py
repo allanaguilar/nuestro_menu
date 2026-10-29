@@ -67,8 +67,11 @@ class DashboardView(HouseholdRequiredMixin, TemplateView):
         baby = baby_meals_on(self.request.household, today)
         recipe_ids = [item["entry"].recipe_id for item in entries if item["entry"]]
         prefs = preference_map(self.request.user, recipe_ids)
+        today_item = next(item for item in entries if item["is_today"])
         context.update(
             {
+                "today": today,
+                "today_item": today_item,
                 "week_start": week_start,
                 "plan": plan,
                 "entries": entries,

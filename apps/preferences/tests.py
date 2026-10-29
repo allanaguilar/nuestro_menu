@@ -22,6 +22,25 @@ class PreferenceTests(TestCase):
         upsert_preference(self.naiara, self.recipe, is_avoided=True)
         self.assertIn(self.recipe.id, avoided_recipe_ids(self.household))
 
+    def test_rating_keeps_the_favorite(self):
+        upsert_preference(self.allan, self.recipe, is_favorite=True, rating=2)
+        self.client.login(username="allan", password="clave-segura-1")
+        page = self.client.get("/preferencias/")
+        self.assertNotContains(page, "Favorita para mí")
+        self.assertNotContains(page, ">Guardar<")
+        self.assertContains(page, "Evitar en el menú")
+        self.client.post(
+            "/preferencias/",
+            {
+                "recipe_id": str(self.recipe.id),
+                f"{self.recipe.id}-rating": "4",
+            },
+        )
+        pref = RecipePreference.objects.get(user=self.allan, recipe=self.recipe)
+        self.assertTrue(pref.is_favorite)
+        self.assertEqual(pref.rating, 4)
+        self.assertFalse(pref.is_avoided)
+
     def test_unique_user_recipe(self):
         RecipePreference.objects.create(user=self.allan, recipe=self.recipe, rating=5)
         with self.assertRaises(Exception):

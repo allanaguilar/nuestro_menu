@@ -3,6 +3,71 @@
   window.__nuestroMenuReady = true;
 
   document.addEventListener("click", function (event) {
+    const clear = event.target.closest(".search-clear");
+    if (clear) {
+      const field = clear.closest(".search-field");
+      const input = field && field.querySelector('input[name="q"]');
+      const form = clear.closest("form.filters");
+      if (input && form) {
+        event.preventDefault();
+        input.value = "";
+        clear.hidden = true;
+        form.requestSubmit();
+      }
+      return;
+    }
+    const copy = event.target.closest(".copy-invite");
+    if (copy) {
+      const code = document.getElementById("invite-url");
+      const text = code ? code.textContent.trim() : "";
+      if (!text) return;
+      const finish = function () {
+        copy.textContent = "Copiado";
+        window.setTimeout(function () {
+          copy.textContent = "Copiar enlace";
+        }, 2000);
+      };
+      const fallback = function () {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.left = "-9999px";
+        document.body.appendChild(area);
+        area.select();
+        let ok = false;
+        try {
+          ok = document.execCommand("copy");
+        } catch (err) {
+          ok = false;
+        }
+        area.remove();
+        if (ok) finish();
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(finish).catch(fallback);
+      } else {
+        fallback();
+      }
+      return;
+    }
+    const more = event.target.closest(".nav-more-toggle");
+    if (more) {
+      const panel = document.getElementById(more.getAttribute("aria-controls"));
+      if (!panel) return;
+      const open = panel.hidden;
+      panel.hidden = !open;
+      more.setAttribute("aria-expanded", open ? "true" : "false");
+      return;
+    }
+    if (!event.target.closest(".nav-more")) {
+      const panel = document.querySelector(".nav-more-panel");
+      const toggle = document.querySelector(".nav-more-toggle");
+      if (panel && !panel.hidden) {
+        panel.hidden = true;
+        if (toggle) toggle.setAttribute("aria-expanded", "false");
+      }
+    }
     const day = event.target.closest(".day-open, .recipe-preview");
     if (day) {
       const panel = document.getElementById(day.getAttribute("aria-controls"));
@@ -10,6 +75,11 @@
       const open = panel.hidden;
       panel.hidden = !open;
       day.setAttribute("aria-expanded", open ? "true" : "false");
+      if (open) {
+        window.requestAnimationFrame(function () {
+          panel.scrollIntoView({ block: "nearest" });
+        });
+      }
       return;
     }
     const toggle = event.target.closest(".nav-toggle");
@@ -70,6 +140,20 @@
     const form = event.detail && event.detail.elt;
     if (form && form.classList) form.classList.remove("is-loading");
   }
+  document.addEventListener("input", function (event) {
+    const input = event.target;
+    if (!(input instanceof HTMLInputElement) || input.name !== "q") return;
+    const field = input.closest(".search-field");
+    const clear = field && field.querySelector(".search-clear");
+    if (clear) clear.hidden = !input.value;
+  });
+
+  document.addEventListener("change", function (event) {
+    const form = event.target.closest("form.pref-form");
+    if (!form) return;
+    form.requestSubmit();
+  });
+
   document.addEventListener("keydown", function (event) {
     if (event.key !== "Enter") return;
     const input = event.target;

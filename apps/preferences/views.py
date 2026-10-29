@@ -41,7 +41,6 @@ class PreferenceListView(HouseholdRequiredMixin, View):
                 request.user,
                 recipe,
                 rating=rating,
-                is_favorite=form.cleaned_data.get("is_favorite"),
                 is_avoided=form.cleaned_data.get("is_avoided"),
             )
             messages.success(request, f"Preferencias de «{recipe.name}» guardadas.")

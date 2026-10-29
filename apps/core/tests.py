@@ -32,7 +32,8 @@ class LoginRedirectTests(TestCase):
             follow=True,
         )
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Almuerzos de esta semana")
+        self.assertContains(response, "Esta semana")
+        self.assertContains(response, "Sin plato hoy")
         self.assertLess(len(response.redirect_chain), 4)
 
     def test_home_does_not_loop(self):

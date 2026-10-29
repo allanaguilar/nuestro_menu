@@ -35,9 +35,30 @@ class SignUpForm(StyledFormMixin, UserCreationForm):
         super().__init__(*args, **kwargs)
         self.fields["password1"].label = "Contraseña"
         self.fields["password2"].label = "Repetir contraseña"
+        token = self.data.get("invite_token") if self.is_bound else self.initial.get("invite_token")
+        self.invited = bool((token or "").strip())
+        if self.invited:
+            self.fields.pop("first_name", None)
+            self.fields.pop("household_name", None)
+            self.fields["email"].required = False
+            self.fields["email"].label = "Correo"
+            self.fields["email"].help_text = "Opcional. Sirve para recuperar la contraseña."
+            self.fields["username"].help_text = ""
+            self.fields["password1"].help_text = "Al menos 8 caracteres y distinta del usuario."
+            self.fields["password2"].required = False
+            self.fields["password2"].widget = forms.HiddenInput()
         self._style()
 
+    def validate_password_for_user(self, user, password_field_name="password2"):
+        if self.invited:
+            password_field_name = "password1"
+        super().validate_password_for_user(user, password_field_name)
+
     def clean(self):
+        if self.invited:
+            password = self.cleaned_data.get("password1")
+            if password:
+                self.cleaned_data["password2"] = password
         cleaned = super().clean()
         token = (cleaned.get("invite_token") or "").strip()
         household_name = (cleaned.get("household_name") or "").strip()

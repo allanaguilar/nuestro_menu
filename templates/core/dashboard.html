@@ -3,26 +3,37 @@
 {% block content %}
 <section class="hero">
   <div>
-    <p class="eyebrow">{% if current_household %}{{ current_household.name }}{% endif %}</p>
-    <h1>Almuerzos de esta semana</h1>
+    <p class="eyebrow">Hoy · {{ today|date:"l j M" }}</p>
+    <h1>{% if today_item.entry %}{{ today_item.entry.recipe.name }}{% else %}Sin plato hoy{% endif %}</h1>
     {% if plan %}
       <span class="status status-{{ plan.status }}">{% if plan.status == 'approved' %}Aprobado{% else %}Borrador{% endif %}</span>
     {% else %}
       <span class="status status-draft">Sin menú</span>
     {% endif %}
-    <p class="lede">Siete días, un plato cada uno. Genera, ajusta y aprueba cuando os convenza.</p>
-  </div>
-  <div class="hero-actions">
-    <a class="button" href="{% url 'meal_plans:week' week_start=week_start|date:'Y-m-d' %}">Abrir el menú</a>
-    <a class="button button-secondary" href="{% url 'recipes:create' %}">Añadir receta</a>
   </div>
 </section>
+
+<div class="summary-stack">
+  <a class="summary-row" href="{% url 'baby:current' %}">
+    <span class="summary-label">{% include "includes/icon.html" with name="baby" %}Bebé</span>
+    <span>{% if baby_lunch %}{{ baby_lunch.food.name }}{% else %}sin comida{% endif %}{% if baby_snack %} · merienda {{ baby_snack.food.name }}{% endif %}</span>
+  </a>
+  <a class="summary-row" href="{% url 'shopping:list' %}">
+    <span class="summary-label">{% include "includes/icon.html" with name="cart" %}Lista de compra</span>
+    <span>{% if shopping_pending == 1 %}queda 1{% elif shopping_pending %}quedan {{ shopping_pending }}{% else %}nada pendiente{% endif %}</span>
+  </a>
+</div>
 
 {% if active_recipes < 7 %}
 <div class="notice">
   Necesitáis al menos siete recetas activas para generar un menú completo. Ahora mismo hay {{ active_recipes }}.
 </div>
 {% endif %}
+
+<div class="section-head">
+  <h2>Esta semana</h2>
+  <a href="{% url 'meal_plans:week' week_start=week_start|date:'Y-m-d' %}">Abrir el menú</a>
+</div>
 
 <div class="day-list">
   {% for item in entries %}
@@ -37,6 +48,7 @@
         <span class="dish">{{ item.entry.recipe.name }}</span>
         <span class="tag">{{ item.entry.recipe.get_category_display }}</span>
       </span>
+      <span class="day-chevron" aria-hidden="true">{% include "includes/icon.html" with name="chevron" %}</span>
     </button>
     <section id="receta-{{ item.date|date:'Y-m-d' }}" class="day-recipe" hidden>
       <h3>{{ item.entry.recipe.name }}</h3>
@@ -57,26 +69,12 @@
   {% endfor %}
 </div>
 
-<p class="lede baby-today">
-  Hoy el bebé:
-  {% if baby_lunch %}{{ baby_lunch.food.name }}{% else %}sin comida{% endif %}{% if baby_snack %} · merienda {{ baby_snack.food.name }}{% endif %}.
-  <a href="{% url 'baby:current' %}">Abrir el menú del bebé</a>
-</p>
-
-<p class="lede shopping-today">
-  <a href="{% url 'shopping:list' %}">Lista de compra</a>{% if shopping_pending == 1 %} · queda 1{% elif shopping_pending %} · quedan {{ shopping_pending }}{% endif %}.
-</p>
-
+{% if not plan or plan.status != 'approved' %}
 <div class="toolbar action-row">
   <form method="post" action="{% url 'meal_plans:generate' week_start=week_start|date:'Y-m-d' %}">
     {% csrf_token %}
-    {% if plan and plan.status == 'approved' %}
-    <input type="hidden" name="confirm_replace" value="1">
-    <button class="button" type="submit" data-confirm="Este menú está aprobado. ¿Quieres sustituirlo por un borrador nuevo?">Generar de nuevo</button>
-    {% else %}
     <button class="button" type="submit">Generar menú</button>
-    {% endif %}
   </form>
-  <a class="button button-secondary" href="{% url 'recipes:list' %}">Recetario ({{ recipe_total }})</a>
 </div>
+{% endif %}
 {% endblock %}
