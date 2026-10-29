@@ -420,7 +420,14 @@ textarea.recipe-text {
 .shop-item .check { margin: 0; flex: 1; }
 .shop-item.is-done .shop-name { text-decoration: line-through; color: var(--muted); }
 .shop-aisle-select { width: auto; max-width: 9.5rem; min-width: 8.2rem; }
-.shop-cart form { margin-top: 0.8rem; }
+.shop-cart form {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.8rem;
+}
+.shop-sync { margin: 0.2rem 0 0; text-align: center; color: var(--muted); }
+.shop-who { margin: 0.05rem 0 0.35rem 1.9rem; color: var(--muted); }
+.shop-sync[hidden], #shop-pending[hidden] { display: none; }
 .shop-add {
   width: min(40rem, 100%);
   margin: 0.2rem auto 2.4rem;

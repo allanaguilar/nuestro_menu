@@ -76,10 +76,46 @@ class ShoppingListTests(TestCase):
         item.refresh_from_db()
         self.assertFalse(item.done)
 
+    def test_check_and_aisle_answer_without_leaving_the_page(self):
+        self.client.post("/lista/anadir/", {"name": "Tomates"})
+        item = ShoppingItem.objects.get()
+        moved = self.client.post(
+            f"/lista/{item.pk}/pasillo/",
+            {"aisle": "verduras"},
+            HTTP_X_SHOP="1",
+        )
+        self.assertEqual(moved.status_code, 200)
+        self.assertContains(moved, "fa-carrot", html=False)
+        self.assertIn("Verduras", moved.json()["html"])
+        checked = self.client.post(
+            f"/lista/{item.pk}/hecho/",
+            {"done": "1"},
+            HTTP_X_SHOP="1",
+        )
+        self.assertEqual(checked.status_code, 200)
+        self.assertIn("En el carro", checked.json()["html"])
+        self.assertIn("Vaciar lo comprado", checked.json()["html"])
+        item.refresh_from_db()
+        self.assertTrue(item.done)
+
+    def test_partner_presence_and_recent_add(self):
+        self.partner.first_name = "Naiara"
+        self.partner.save(update_fields=["first_name"])
+        self.client.login(username="pareja", password="clave-segura-1")
+        self.client.post("/lista/anadir/", {"name": "Detergente"})
+        self.client.get("/lista/")
+        self.client.login(username="allan", password="clave-segura-1")
+        page = self.client.get("/lista/")
+        self.assertContains(page, "Naiara también la tiene abierta.")
+        self.assertContains(page, "Naiara lo añadió ahora")
+        self.client.post("/lista/anadir/", {"name": "Leche"})
+        own = self.client.get("/lista/")
+        self.assertNotContains(own, "Allan lo añadió ahora")
+
     def test_home_links_to_the_list(self):
         self.client.post("/lista/anadir/", {"name": "Pan"})
         self.client.post("/lista/anadir/", {"name": "Leche"})
         home = self.client.get("/inicio/")
         self.assertContains(home, "Lista de compra")
         self.assertContains(home, "quedan 2")
-        self.assertContains(home, ">Lista de compra<")
+        self.assertContains(home, "Lista de compra</span>")

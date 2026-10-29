@@ -7,7 +7,7 @@ class ShoppingError(Exception):
     pass
 
 
-def add_shopping_item(household, name):
+def add_shopping_item(household, name, user=None):
     cleaned = " ".join((name or "").split())
     if not cleaned:
         raise ShoppingError("Escribe lo que falta.")
@@ -19,6 +19,7 @@ def add_shopping_item(household, name):
             household=household,
             name=cleaned,
             aisle=ShoppingItem.Aisle.NONE,
+            added_by=user,
         )
     except IntegrityError as exc:
         raise ShoppingError("Ya está en la lista.") from exc

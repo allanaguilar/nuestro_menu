@@ -109,6 +109,12 @@
         form.appendChild(input);
       });
     }
+    if (form.closest("#shop-live")) {
+      event.preventDefault();
+      event.stopPropagation();
+      replaceShop(form.action, new FormData(form));
+      return;
+    }
     const message = button && button.getAttribute("data-confirm");
     if (!message) {
       form.classList.add("is-loading");
@@ -204,6 +210,58 @@
   document.addEventListener("htmx:sendError", releaseForm);
   document.addEventListener("htmx:responseError", releaseForm);
   document.addEventListener("htmx:timeout", releaseForm);
+
+  let shopBusy = false;
+
+  function updateShopStatus(data) {
+    const pending = document.getElementById("shop-pending");
+    const viewers = document.getElementById("shop-viewers");
+    if (pending) {
+      pending.textContent = data.pending || "";
+      pending.hidden = !data.pending;
+    }
+    if (viewers) {
+      viewers.textContent = data.viewers || "";
+      viewers.hidden = !data.viewers;
+    }
+  }
+
+  function replaceShop(url, body) {
+    const live = document.getElementById("shop-live");
+    if (!live) return;
+    shopBusy = true;
+    const options = { headers: { "X-Shop": "1" } };
+    if (body) {
+      options.method = "POST";
+      options.body = body;
+    }
+    fetch(url, options)
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        updateShopStatus(data);
+        if (data.html && data.revision !== live.dataset.revision) {
+          live.innerHTML = data.html;
+          live.dataset.revision = data.revision;
+        }
+      })
+      .catch(function () {})
+      .finally(function () { shopBusy = false; });
+  }
+
+  function pollShop() {
+    const live = document.getElementById("shop-live");
+    if (!live || shopBusy || !live.dataset.fragment) return;
+    if (document.activeElement && live.contains(document.activeElement)) return;
+    replaceShop(live.dataset.fragment);
+  }
+
+  let shopTimer = 0;
+  function watchShop() {
+    if (shopTimer || !document.getElementById("shop-live")) return;
+    shopTimer = window.setInterval(pollShop, 8000);
+  }
+  watchShop();
+  document.addEventListener("htmx:afterSettle", watchShop);
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {

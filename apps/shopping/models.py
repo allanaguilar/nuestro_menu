@@ -1,6 +1,7 @@
 import re
 import uuid
 
+from django.conf import settings
 from django.db import models
 
 
@@ -31,6 +32,13 @@ class ShoppingItem(models.Model):
         "pasillo", max_length=16, choices=Aisle.choices, default=Aisle.NONE
     )
     done = models.BooleanField("en el carro", default=False)
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="shopping_items_added",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -55,3 +63,23 @@ class ShoppingItem(models.Model):
         self.name = re.sub(r"\s+", " ", (self.name or "").strip())
         self.normalized_name = normalize_item_name(self.name)
         super().save(*args, **kwargs)
+
+
+class ShoppingPresence(models.Model):
+    household = models.ForeignKey(
+        "households.Household", on_delete=models.CASCADE, related_name="shopping_presence"
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="shopping_presence",
+    )
+    last_seen = models.DateTimeField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["household", "user"],
+                name="uniq_shopping_presence",
+            )
+        ]

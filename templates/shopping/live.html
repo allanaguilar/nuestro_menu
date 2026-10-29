@@ -1,0 +1,31 @@
+{% if groups or cart %}
+<div class="shop-board">
+  {% for group in groups %}
+  <section class="shop-aisle" aria-labelledby="pasillo-{{ group.key }}">
+    <h2 id="pasillo-{{ group.key }}">{% include "includes/icon.html" with name=group.key %}<span>{{ group.label }}</span></h2>
+    <ul class="shop-list">
+      {% for item in group.items %}
+      {% include "shopping/item.html" %}
+      {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+
+  {% if cart %}
+  <section class="shop-aisle shop-cart" aria-labelledby="en-el-carro">
+    <h2 id="en-el-carro">{% include "includes/icon.html" with name="cart" %}<span>En el carro</span></h2>
+    <ul class="shop-list">
+      {% for item in cart %}
+      {% include "shopping/item.html" %}
+      {% endfor %}
+    </ul>
+    <form method="post" action="{% url 'shopping:clear' %}">
+      {% csrf_token %}
+      <button class="button button-ghost" type="submit">Vaciar lo comprado</button>
+    </form>
+  </section>
+  {% endif %}
+</div>
+{% else %}
+<p class="lede">La lista está al día. Escribe lo que falte.</p>
+{% endif %}
