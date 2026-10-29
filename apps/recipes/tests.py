@@ -35,6 +35,7 @@ class RecipeTests(TestCase):
         self.client.login(username="allan", password="clave-segura-1")
         response = self.client.get("/recetas/")
         self.assertContains(response, "Lentejas")
+        self.assertContains(response, "Vista previa de Lentejas")
         self.assertNotContains(response, "Secreto")
 
     def test_cannot_edit_foreign_recipe(self):

@@ -39,6 +39,10 @@
       <p class="tag">{{ recipe.get_category_display }}{% if recipe.prep_time_minutes %} · {{ recipe.prep_time_minutes }} min{% endif %}{% if not recipe.is_meal %} · apunte{% endif %}{% if not recipe.is_active %} · archivada{% endif %}</p>
     </div>
     <div class="icon-row">
+      <button type="button" class="icon-btn recipe-preview" aria-expanded="false" aria-controls="vista-{{ recipe.pk }}" aria-label="Vista previa de {{ recipe.name }}">
+        {% include "includes/icon.html" with name="eye" %}
+        <span class="sr-only">Vista previa</span>
+      </button>
       <a class="icon-btn" href="{% url 'recipes:update' recipe.pk %}" aria-label="Editar">
         {% include "includes/icon.html" with name="pencil" %}
         <span class="sr-only">Editar</span>
@@ -66,6 +70,9 @@
         </button>
       </form>
     </div>
+    <section id="vista-{{ recipe.pk }}" class="day-recipe" hidden>
+      {% include "includes/recipe_body.html" with recipe=recipe %}
+    </section>
   </li>
   {% endfor %}
 </ul>

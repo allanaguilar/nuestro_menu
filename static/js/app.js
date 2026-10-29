@@ -3,7 +3,7 @@
   window.__nuestroMenuReady = true;
 
   document.addEventListener("click", function (event) {
-    const day = event.target.closest(".day-open");
+    const day = event.target.closest(".day-open, .recipe-preview");
     if (day) {
       const panel = document.getElementById(day.getAttribute("aria-controls"));
       if (!panel) return;

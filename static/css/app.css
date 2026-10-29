@@ -260,6 +260,7 @@ label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
 .day-recipe ul { margin: 0.2rem 0 0; padding-left: 1.2rem; }
 .day-recipe li { margin: 0.2rem 0; }
 .day-recipe-lines p { margin: 0.35rem 0; }
+.day-recipe .icon-row { margin-top: 0.85rem; }
 textarea.recipe-text {
   min-height: 7.5rem;
   max-height: 7.5rem;

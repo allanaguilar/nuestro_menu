@@ -1,0 +1,24 @@
+<div class="icon-row day-recipe-actions">
+  <a class="icon-btn" href="{% url 'recipes:update' recipe.pk %}" aria-label="Editar {{ recipe.name }}">
+    {% include "includes/icon.html" with name="pencil" %}
+    <span class="sr-only">Editar</span>
+  </a>
+  {% if show_calendar %}
+  <a class="icon-btn" href="{% url 'meal_plans:week' week_start=week_start|date:'Y-m-d' %}" aria-label="Cambiar el plato de este día">
+    {% include "includes/icon.html" with name="calendar" %}
+    <span class="sr-only">Cambiar el plato</span>
+  </a>
+  {% endif %}
+  <form method="post" action="{% url 'recipes:favorite' recipe.pk %}">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ request.path }}">
+    <button class="icon-btn" type="submit" aria-label="{% if recipe.pk in favorite_ids %}Quitar favorita{% else %}Marcar favorita{% endif %}">
+      {% if recipe.pk in favorite_ids %}
+        {% include "includes/icon.html" with name="heart-fill" %}
+      {% else %}
+        {% include "includes/icon.html" with name="heart" %}
+      {% endif %}
+      <span class="sr-only">{% if recipe.pk in favorite_ids %}Quitar favorita{% else %}Marcar favorita{% endif %}</span>
+    </button>
+  </form>
+</div>

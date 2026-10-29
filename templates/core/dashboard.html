@@ -41,27 +41,8 @@
     <section id="receta-{{ item.date|date:'Y-m-d' }}" class="day-recipe" hidden>
       <h3>{{ item.entry.recipe.name }}</h3>
       <p class="day-recipe-meta">{{ item.entry.recipe.get_category_display }}{% if item.entry.recipe.prep_time_minutes %} · {{ item.entry.recipe.prep_time_minutes }} min{% endif %}</p>
-      {% if item.entry.recipe.ingredient_lines or item.entry.recipe.step_lines %}
-        {% if item.entry.recipe.ingredient_lines %}
-        <h4>Ingredientes</h4>
-        <ul>
-          {% for line in item.entry.recipe.ingredient_lines %}
-          <li>{{ line }}</li>
-          {% endfor %}
-        </ul>
-        {% endif %}
-        {% if item.entry.recipe.step_lines %}
-        <h4>Pasos</h4>
-        <div class="day-recipe-lines">
-          {% for line in item.entry.recipe.step_lines %}
-          <p>{{ line }}</p>
-          {% endfor %}
-        </div>
-        {% endif %}
-      {% else %}
-      <p>Esta receta todavía no tiene ingredientes ni pasos.</p>
-      {% endif %}
-      <a href="{% url 'recipes:update' item.entry.recipe.pk %}">Editar en el recetario</a>
+      {% include "includes/recipe_body.html" with recipe=item.entry.recipe %}
+      {% include "includes/day_recipe_actions.html" with recipe=item.entry.recipe show_calendar=True week_start=week_start %}
     </section>
     {% else %}
     <div class="day-rail-when">

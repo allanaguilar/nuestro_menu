@@ -13,6 +13,7 @@ from apps.core.mixins import HouseholdRequiredMixin
 from apps.core.week import monday_of, weekday_label, weekday_short
 from apps.households.selectors import get_user_membership
 from apps.meal_plans.selectors import get_plan_for_week
+from apps.preferences.selectors import preference_map
 from apps.recipes.selectors import list_active_recipes, recipe_count
 
 
@@ -64,6 +65,8 @@ class DashboardView(HouseholdRequiredMixin, TemplateView):
                 }
             )
         baby = baby_meals_on(self.request.household, today)
+        recipe_ids = [item["entry"].recipe_id for item in entries if item["entry"]]
+        prefs = preference_map(self.request.user, recipe_ids)
         context.update(
             {
                 "week_start": week_start,
@@ -74,6 +77,9 @@ class DashboardView(HouseholdRequiredMixin, TemplateView):
                 "baby_lunch": baby.get("comida"),
                 "baby_snack": baby.get("merienda"),
                 "shopping_pending": pending_count(self.request.household),
+                "favorite_ids": {
+                    recipe_id for recipe_id, pref in prefs.items() if pref.is_favorite
+                },
             }
         )
         return context

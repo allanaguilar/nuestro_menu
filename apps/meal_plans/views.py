@@ -23,6 +23,7 @@ from apps.meal_plans.services.planning import (
     change_entry,
     suggest_alternative,
 )
+from apps.preferences.selectors import preference_map
 from apps.recipes.models import Recipe
 
 
@@ -98,6 +99,8 @@ class WeeklyMenuView(HouseholdRequiredMixin, TemplateView):
                     "form": form,
                 }
             )
+        recipe_ids = [entry.recipe_id for entry in entry_map.values()]
+        prefs = preference_map(self.request.user, recipe_ids)
         context.update(
             {
                 "week_start": week_start,
@@ -107,6 +110,9 @@ class WeeklyMenuView(HouseholdRequiredMixin, TemplateView):
                 "current_week": monday_of(timezone.localdate()),
                 "plan": plan,
                 "days": days,
+                "favorite_ids": {
+                    recipe_id for recipe_id, pref in prefs.items() if pref.is_favorite
+                },
                 "recipe_count": Recipe.objects.filter(
                     household=self.request.household, is_active=True
                 ).count(),
