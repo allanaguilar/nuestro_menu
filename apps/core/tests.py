@@ -47,6 +47,8 @@ class LoginRedirectTests(TestCase):
         self.assertContains(dashboard, "Lun")
         self.assertContains(dashboard, "nav-toggle")
         self.assertContains(dashboard, "Abrir menú")
+        self.assertContains(dashboard, 'class="tabbar"')
+        self.assertContains(dashboard, 'href="/inicio/" aria-current="page"')
 
 
 class PasswordResetPageTests(TestCase):

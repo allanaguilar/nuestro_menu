@@ -51,7 +51,7 @@
       }
       return;
     }
-    const more = event.target.closest(".nav-more-toggle");
+    const more = event.target.closest(".nav-more-toggle, .tabbar-more-toggle");
     if (more) {
       const panel = document.getElementById(more.getAttribute("aria-controls"));
       if (!panel) return;
@@ -60,13 +60,13 @@
       more.setAttribute("aria-expanded", open ? "true" : "false");
       return;
     }
-    if (!event.target.closest(".nav-more")) {
-      const panel = document.querySelector(".nav-more-panel");
-      const toggle = document.querySelector(".nav-more-toggle");
-      if (panel && !panel.hidden) {
+    if (!event.target.closest(".nav-more, .tabbar-more")) {
+      document.querySelectorAll(".nav-more-panel, .tabbar-more-panel").forEach(function (panel) {
+        if (panel.hidden) return;
         panel.hidden = true;
+        const toggle = document.querySelector('[aria-controls="' + panel.id + '"]');
         if (toggle) toggle.setAttribute("aria-expanded", "false");
-      }
+      });
     }
     const day = event.target.closest(".day-open, .recipe-preview");
     if (day) {
