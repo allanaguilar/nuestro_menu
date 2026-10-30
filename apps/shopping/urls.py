@@ -6,6 +6,7 @@ from apps.shopping.views import (
     MoveShoppingItemView,
     ShoppingFragmentView,
     ShoppingListView,
+    ShoppingPushView,
     ToggleShoppingItemView,
 )
 
@@ -18,4 +19,5 @@ urlpatterns = [
     path("lista/<uuid:pk>/hecho/", ToggleShoppingItemView.as_view(), name="toggle"),
     path("lista/<uuid:pk>/pasillo/", MoveShoppingItemView.as_view(), name="aisle"),
     path("lista/vaciar/", ClearBoughtView.as_view(), name="clear"),
+    path("lista/avisos/", ShoppingPushView.as_view(), name="push"),
 ]

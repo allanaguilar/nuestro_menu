@@ -428,6 +428,8 @@ textarea.recipe-text {
   margin-top: 0.8rem;
 }
 .shop-sync { margin: 0.15rem 0 0; text-align: center; color: var(--muted); }
+#shop-push { margin-top: 0.7rem; }
+#shop-push[hidden] { display: none; }
 .page-head .shop-sync + .lede { margin-top: 0.45rem; }
 .shop-who { margin: 0; color: var(--muted); font-size: 0.82rem; line-height: 1.2; font-weight: 400; overflow-wrap: anywhere; }
 .shop-sync[hidden], #shop-pending[hidden] { display: none; }

@@ -6,11 +6,15 @@
     <h1>Lista de compra</h1>
     <p class="shop-sync" id="shop-viewers"{% if not viewers %} hidden{% endif %}>{{ viewers }}</p>
     <p class="lede" id="shop-pending"{% if not pending_label %} hidden{% endif %}>{{ pending_label }}</p>
+    {% if vapid_public_key %}
+    <button type="button" class="button button-ghost" id="shop-push" hidden data-key="{{ vapid_public_key }}" data-subscribe="{% url 'shopping:push' %}">Avisarme</button>
+    {% endif %}
   </div>
 </div>
 
 <form class="shop-add" method="post" action="{% url 'shopping:add' %}">
   {% csrf_token %}
+  <input type="hidden" name="client_key" value="">
   <label for="{{ form.name.id_for_label }}">Qué falta</label>
   {{ form.name }}
   {{ form.name.errors }}

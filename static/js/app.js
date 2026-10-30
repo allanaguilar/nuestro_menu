@@ -95,6 +95,10 @@
   document.addEventListener("submit", function (event) {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
+    if (form.classList.contains("shop-add")) {
+      const field = form.querySelector('input[name="client_key"]');
+      if (field) field.value = shopClient();
+    }
     const button = event.submitter;
     if (form.classList.contains("day-rail-pick")) {
       document.querySelectorAll("form.day-rail-pick").forEach(function (other) {
@@ -271,6 +275,85 @@
     replaceShop(live.dataset.fragment);
   }
 
+  function csrfToken() {
+    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (input && input.value) return input.value;
+    const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : "";
+  }
+
+  function urlBase64ToUint8Array(value) {
+    const padded = value + "=".repeat((4 - (value.length % 4)) % 4);
+    const base64 = padded.replace(/-/g, "+").replace(/_/g, "/");
+    const raw = atob(base64);
+    const bytes = new Uint8Array(raw.length);
+    for (let index = 0; index < raw.length; index += 1) bytes[index] = raw.charCodeAt(index);
+    return bytes;
+  }
+
+  function enablePush(button) {
+    if (!button || button.dataset.pushing === "1") return;
+    button.dataset.pushing = "1";
+    navigator.serviceWorker.ready
+      .then(function (registration) {
+        return registration.pushManager.getSubscription().then(function (existing) {
+          if (existing) return existing;
+          return registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(button.dataset.key),
+          });
+        });
+      })
+      .then(function (subscription) {
+        const data = subscription.toJSON();
+        return fetch(button.dataset.subscribe, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-CSRFToken": csrfToken(),
+          },
+          body: JSON.stringify({
+            endpoint: data.endpoint,
+            keys: data.keys,
+            client_key: shopClient(),
+          }),
+        });
+      })
+      .then(function (response) {
+        if (!response.ok) throw new Error("aviso");
+        button.hidden = true;
+      })
+      .catch(function () {
+        button.hidden = false;
+        const iphone = /iPhone|iPad/.test(navigator.userAgent);
+        const installed = window.matchMedia("(display-mode: standalone)").matches;
+        button.textContent = iphone && !installed ? "Añádela a inicio para avisarte" : "Avisarme";
+      })
+      .finally(function () {
+        button.dataset.pushing = "";
+      });
+  }
+
+  function watchPush() {
+    const button = document.getElementById("shop-push");
+    if (!button || !("Notification" in window) || !("PushManager" in window)) return;
+    if (!button.dataset.bound) {
+      button.dataset.bound = "1";
+      button.addEventListener("click", function () {
+        Notification.requestPermission().then(function (permission) {
+          if (permission === "granted") enablePush(button);
+          else button.hidden = true;
+        });
+      });
+    }
+    if (Notification.permission === "granted") {
+      button.hidden = true;
+      enablePush(button);
+      return;
+    }
+    button.hidden = Notification.permission !== "default";
+  }
+
   let shopTimer = 0;
   function watchShop() {
     if (shopTimer || !document.getElementById("shop-live")) return;
@@ -278,7 +361,11 @@
     shopTimer = window.setInterval(pollShop, 4000);
   }
   watchShop();
-  document.addEventListener("htmx:afterSettle", watchShop);
+  watchPush();
+  document.addEventListener("htmx:afterSettle", function () {
+    watchShop();
+    watchPush();
+  });
 
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", function () {

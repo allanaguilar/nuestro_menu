@@ -118,6 +118,9 @@ DEFAULT_FROM_EMAIL = env(
 )
 # Render bloquea los puertos SMTP. Con clave de API el correo sale por HTTPS.
 BREVO_API_KEY = env("BREVO_API_KEY", default="")
+VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
+VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
+VAPID_SUBJECT = env("VAPID_SUBJECT", default="mailto:no-reply@nuestro-menu.local")
 if BREVO_API_KEY:
     EMAIL_BACKEND = "apps.core.mail.BrevoEmailBackend"
 else:

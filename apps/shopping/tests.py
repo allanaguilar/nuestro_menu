@@ -1,9 +1,12 @@
+import json
+from unittest.mock import patch
+
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from apps.households.models import HouseholdMembership
 from apps.households.services import create_household_for_user
-from apps.shopping.models import ShoppingItem
+from apps.shopping.models import ShoppingItem, ShoppingPushSubscription
 
 
 class ShoppingListTests(TestCase):
@@ -119,6 +122,76 @@ class ShoppingListTests(TestCase):
         )
         self.assertEqual(other.status_code, 200)
         self.assertIn("otro teléfono", other.json()["viewers"])
+
+    @override_settings(VAPID_PUBLIC_KEY="clave-publica", VAPID_PRIVATE_KEY="clave-privada")
+    def test_push_reaches_the_other_phone_only(self):
+        self.user.first_name = "Allan"
+        self.user.save(update_fields=["first_name"])
+        ShoppingPushSubscription.objects.create(
+            household=self.household,
+            user=self.user,
+            client_key="telefono-allan",
+            endpoint="https://push.example/allan",
+            p256dh="p256",
+            auth="auth",
+        )
+        ShoppingPushSubscription.objects.create(
+            household=self.household,
+            user=self.partner,
+            client_key="telefono-naiara",
+            endpoint="https://push.example/naiara",
+            p256dh="p256",
+            auth="auth",
+        )
+        with patch("apps.shopping.push.webpush") as pushed:
+            added = self.client.post(
+                "/lista/anadir/",
+                {"name": "Pan", "client_key": "telefono-allan"},
+            )
+        self.assertRedirects(added, "/lista/")
+        self.assertEqual(pushed.call_count, 1)
+        self.assertEqual(
+            pushed.call_args.kwargs["subscription_info"]["endpoint"],
+            "https://push.example/naiara",
+        )
+        self.assertIn("Allan añadió Pan", pushed.call_args.kwargs["data"])
+        item = ShoppingItem.objects.get()
+        item.done = True
+        item.save(update_fields=["done"])
+        with patch("apps.shopping.push.webpush") as cleared:
+            self.client.post("/lista/vaciar/", HTTP_X_SHOP_CLIENT="telefono-allan")
+        self.assertEqual(cleared.call_count, 1)
+        self.assertIn("ha hecho la compra", cleared.call_args.kwargs["data"])
+
+    def test_empty_cart_does_not_notify(self):
+        with patch("apps.shopping.push.webpush") as pushed:
+            self.client.post("/lista/vaciar/")
+        self.assertEqual(pushed.call_count, 0)
+
+    @override_settings(VAPID_PUBLIC_KEY="")
+    def test_phone_can_subscribe_to_list_alerts(self):
+        response = self.client.post(
+            "/lista/avisos/",
+            data=json.dumps(
+                {
+                    "endpoint": "https://push.example/allan",
+                    "keys": {"p256dh": "p256", "auth": "auth"},
+                    "client_key": "telefono-allan",
+                }
+            ),
+            content_type="application/json",
+        )
+        self.assertEqual(response.status_code, 200)
+        saved = ShoppingPushSubscription.objects.get()
+        self.assertEqual(saved.user, self.user)
+        self.assertEqual(saved.client_key, "telefono-allan")
+        page = self.client.get("/lista/")
+        self.assertNotContains(page, "Avisarme")
+
+    @override_settings(VAPID_PUBLIC_KEY="clave-publica")
+    def test_list_offers_alerts_when_push_is_configured(self):
+        page = self.client.get("/lista/")
+        self.assertContains(page, "Avisarme")
 
     def test_home_links_to_the_list(self):
         self.client.post("/lista/anadir/", {"name": "Pan"})

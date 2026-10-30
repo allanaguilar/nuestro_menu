@@ -84,3 +84,21 @@ class ShoppingPresence(models.Model):
                 name="uniq_shopping_presence",
             )
         ]
+
+
+class ShoppingPushSubscription(models.Model):
+    household = models.ForeignKey(
+        "households.Household",
+        on_delete=models.CASCADE,
+        related_name="shopping_push_subscriptions",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="shopping_push_subscriptions",
+    )
+    client_key = models.CharField(max_length=64, blank=True, default="")
+    endpoint = models.TextField(unique=True)
+    p256dh = models.CharField(max_length=255)
+    auth = models.CharField(max_length=255)
+    created_at = models.DateTimeField(auto_now_add=True)
