@@ -336,7 +336,14 @@
 
   function watchPush() {
     const button = document.getElementById("shop-push");
-    if (!button || !("Notification" in window) || !("PushManager" in window)) return;
+    if (!button) return;
+    const iphone = /iPhone|iPad/.test(navigator.userAgent);
+    const installed = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    if (!("Notification" in window) || !("PushManager" in window) || !("serviceWorker" in navigator)) {
+      button.hidden = false;
+      if (iphone && !installed) button.textContent = "Añádela a inicio para avisarte";
+      return;
+    }
     if (!button.dataset.bound) {
       button.dataset.bound = "1";
       button.addEventListener("click", function () {

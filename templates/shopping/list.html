@@ -7,7 +7,7 @@
     <p class="shop-sync" id="shop-viewers"{% if not viewers %} hidden{% endif %}>{{ viewers }}</p>
     <p class="lede" id="shop-pending"{% if not pending_label %} hidden{% endif %}>{{ pending_label }}</p>
     {% if vapid_public_key %}
-    <button type="button" class="button button-ghost" id="shop-push" hidden data-key="{{ vapid_public_key }}" data-subscribe="{% url 'shopping:push' %}">Avisarme</button>
+    <button type="button" class="button button-ghost" id="shop-push" data-key="{{ vapid_public_key }}" data-subscribe="{% url 'shopping:push' %}">Avisarme</button>
     {% endif %}
   </div>
 </div>
