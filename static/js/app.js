@@ -363,6 +363,42 @@
 
   let tabMark = null;
   let tabCommitted = false;
+  let tabPrefetch = null;
+  let tabPrefetchSeq = 0;
+
+  function tabPrefetchKey(link) {
+    const url = new URL(link.href, location.origin);
+    return url.pathname + url.search;
+  }
+
+  function dropTabPrefetch() {
+    if (!tabPrefetch || tabPrefetch.committed) return;
+    const dropped = tabPrefetch;
+    tabPrefetch = null;
+    dropped.controller.abort();
+    const worker = navigator.serviceWorker && navigator.serviceWorker.controller;
+    if (worker) {
+      worker.postMessage({ type: "drop-prefetch", key: dropped.key, seq: dropped.seq });
+    }
+  }
+
+  function startTabPrefetch(link) {
+    const key = tabPrefetchKey(link);
+    if (tabPrefetch && !tabPrefetch.committed && tabPrefetch.key === key) return;
+    dropTabPrefetch();
+    const controller = new AbortController();
+    const seq = ++tabPrefetchSeq;
+    tabPrefetch = { key: key, seq: seq, controller: controller, committed: false };
+    fetch(key, {
+      credentials: "same-origin",
+      cache: "no-store",
+      signal: controller.signal,
+      headers: {
+        "X-Tab-Prefetch": "1",
+        "X-Tab-Prefetch-Seq": String(seq)
+      }
+    }).catch(function () {});
+  }
 
   function tabLink(event) {
     if (event.button && event.button !== 0) return null;
@@ -424,16 +460,21 @@
     tabCommitted = false;
     tabMark = rememberTab();
     showTab(link);
+    startTabPrefetch(link);
   }, true);
 
   document.addEventListener("pointercancel", function () {
-    if (!tabCommitted) restoreTab();
+    if (tabCommitted) return;
+    restoreTab();
+    dropTabPrefetch();
   }, true);
 
   document.addEventListener("click", function (event) {
     const link = tabLink(event);
     if (!link) return;
     tabCommitted = true;
+    if (tabPrefetch && tabPrefetch.key === tabPrefetchKey(link)) tabPrefetch.committed = true;
+    else dropTabPrefetch();
     if (!tabMark) tabMark = rememberTab();
     showTab(link);
   }, true);
@@ -441,6 +482,7 @@
   document.addEventListener("htmx:afterSettle", function () {
     tabMark = null;
     tabCommitted = false;
+    tabPrefetch = null;
   });
   document.addEventListener("htmx:sendError", restoreTab);
   document.addEventListener("htmx:responseError", restoreTab);

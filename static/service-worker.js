@@ -1,4 +1,4 @@
-const CACHE_NAME = "nuestro-menu-static-v51";
+const CACHE_NAME = "nuestro-menu-static-v52";
 const STATIC_ASSETS = [
   "/static/css/app.css",
   "/static/css/app.css?v=43",
@@ -8,7 +8,7 @@ const STATIC_ASSETS = [
   "/static/vendor/fontawesome/webfonts/fa-solid-900.woff2",
   "/static/vendor/fontawesome/webfonts/fa-regular-400.woff2",
   "/static/js/app.js",
-  "/static/js/app.js?v=28",
+  "/static/js/app.js?v=29",
   "/static/js/htmx.min.js",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",
@@ -33,6 +33,88 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
+const tabPrefetches = new Map();
+
+function prefetchKey(url) {
+  return url.pathname + url.search;
+}
+
+function upstream(request, controller) {
+  return fetch(new Request(request, { signal: controller.signal }));
+}
+
+function rememberTabPrefetch(request) {
+  const key = prefetchKey(new URL(request.url));
+  const previous = tabPrefetches.get(key);
+  if (previous && !previous.claimed) previous.controller.abort();
+
+  const controller = new AbortController();
+  let settleCopy;
+  let rejectCopy;
+  const copyPromise = new Promise((resolve, reject) => {
+    settleCopy = resolve;
+    rejectCopy = reject;
+  });
+  copyPromise.catch(() => {});
+  const entry = {
+    controller: controller,
+    claimed: false,
+    seq: request.headers.get("X-Tab-Prefetch-Seq") || "",
+    ready: copyPromise,
+  };
+  tabPrefetches.set(key, entry);
+
+  return upstream(request, controller).then(
+    (response) => {
+      settleCopy(response.clone());
+      setTimeout(() => {
+        const current = tabPrefetches.get(key);
+        if (current === entry && !current.claimed) tabPrefetches.delete(key);
+      }, 4000);
+      return response;
+    },
+    (error) => {
+      rejectCopy(error);
+      if (tabPrefetches.get(key) === entry) tabPrefetches.delete(key);
+      throw error;
+    }
+  );
+}
+
+function takeTabPrefetch(request) {
+  const key = prefetchKey(new URL(request.url));
+  const entry = tabPrefetches.get(key);
+  if (!entry) return null;
+  entry.claimed = true;
+  tabPrefetches.delete(key);
+  return entry.ready.then((response) => {
+    const headers = new Headers(response.headers);
+    headers.delete("content-encoding");
+    headers.delete("content-length");
+    headers.set("X-Tab-Joined", "1");
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: headers,
+    });
+  });
+}
+
+function networkOrOffline(request) {
+  return fetch(request).catch(() =>
+    caches.match(request).then((cached) => cached || caches.match("/offline/"))
+  );
+}
+
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || data.type !== "drop-prefetch") return;
+  const entry = tabPrefetches.get(data.key);
+  if (!entry || entry.claimed || String(entry.seq) !== String(data.seq)) return;
+  entry.controller.abort();
+  tabPrefetches.delete(data.key);
+});
+
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   const url = new URL(request.url);
@@ -48,11 +130,16 @@ self.addEventListener("fetch", (event) => {
     );
     return;
   }
-  event.respondWith(
-    fetch(request).catch(() =>
-      caches.match(request).then((cached) => cached || caches.match("/offline/"))
-    )
-  );
+  if (request.headers.get("X-Tab-Prefetch") === "1") {
+    event.respondWith(rememberTabPrefetch(request));
+    return;
+  }
+  const shared = takeTabPrefetch(request);
+  if (shared) {
+    event.respondWith(shared.catch(() => networkOrOffline(request)));
+    return;
+  }
+  event.respondWith(networkOrOffline(request));
 });
 
 self.addEventListener("push", (event) => {
