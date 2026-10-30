@@ -68,20 +68,20 @@
     {% if user.is_authenticated %}
     <nav class="tabbar" aria-label="Accesos">
       {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
-      <a href="{% url 'core:dashboard' %}"{% if ns == "core" and name == "dashboard" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="home" %}<span>Inicio</span></a>
-      <a href="{% url 'meal_plans:current' %}"{% if ns == "meal_plans" and name != "history" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="calendar" %}<span>Menú</span></a>
-      <a href="{% url 'shopping:list' %}"{% if ns == "shopping" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="cart" %}<span>Lista</span></a>
-      <a href="{% url 'baby:current' %}"{% if ns == "baby" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="baby" %}<span>Bebé</span></a>
+      <a href="{% url 'core:dashboard' %}" data-title="Inicio"{% if ns == "core" and name == "dashboard" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="home" %}<span>Inicio</span></a>
+      <a href="{% url 'meal_plans:current' %}" data-title="Menú semanal"{% if ns == "meal_plans" and name != "history" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="calendar" %}<span>Menú</span></a>
+      <a href="{% url 'shopping:list' %}" data-title="Lista de compra"{% if ns == "shopping" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="cart" %}<span>Lista</span></a>
+      <a href="{% url 'baby:current' %}" data-title="Bebé"{% if ns == "baby" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="baby" %}<span>Bebé</span></a>
       <div class="tabbar-more">
         <button type="button" class="tabbar-more-toggle" aria-expanded="false" aria-controls="menu-tab-mas"{% if ns == "recipes" or ns == "preferences" or ns == "households" or name == "install" or name == "history" %} aria-current="page"{% endif %}>
           {% include "includes/icon.html" with name="other" %}<span>Más</span>
         </button>
         <div id="menu-tab-mas" class="tabbar-more-panel" hidden>
-          <a href="{% url 'recipes:list' %}">{% include "includes/icon.html" with name="book" %}Recetario</a>
-          <a href="{% url 'preferences:list' %}">{% include "includes/icon.html" with name="sliders" %}Preferencias</a>
-          <a href="{% url 'meal_plans:history' %}">{% include "includes/icon.html" with name="clock" %}Historial</a>
-          <a href="{% url 'households:settings' %}">{% include "includes/icon.html" with name="household" %}Hogar</a>
-          <a href="{% url 'core:install' %}">{% include "includes/icon.html" with name="download" %}Instalar</a>
+          <a href="{% url 'recipes:list' %}" data-title="Recetario">{% include "includes/icon.html" with name="book" %}Recetario</a>
+          <a href="{% url 'preferences:list' %}" data-title="Preferencias">{% include "includes/icon.html" with name="sliders" %}Preferencias</a>
+          <a href="{% url 'meal_plans:history' %}" data-title="Historial de menús">{% include "includes/icon.html" with name="clock" %}Historial</a>
+          <a href="{% url 'households:settings' %}" data-title="Ajustes del hogar">{% include "includes/icon.html" with name="household" %}Hogar</a>
+          <a href="{% url 'core:install' %}" data-title="Instalar Nuestro Menú">{% include "includes/icon.html" with name="download" %}Instalar</a>
           <form class="nav-logout" method="post" action="{% url 'logout' %}" hx-boost="false">
             {% csrf_token %}
             <button type="submit">{% include "includes/icon.html" with name="logout" %}Salir</button>
@@ -92,7 +92,7 @@
     </nav>
     {% endif %}
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
-    <script src="{% static 'js/app.js' %}?v=27" defer></script>
+    <script src="{% static 'js/app.js' %}?v=28" defer></script>
   </body>
   {% endwith %}
 </html>

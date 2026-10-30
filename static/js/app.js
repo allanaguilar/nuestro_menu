@@ -361,6 +361,90 @@
     button.hidden = Notification.permission !== "default";
   }
 
+  let tabMark = null;
+  let tabCommitted = false;
+
+  function tabLink(event) {
+    if (event.button && event.button !== 0) return null;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return null;
+    const link = event.target.closest(".tabbar a[href]");
+    if (!link || link.getAttribute("href").charAt(0) === "#") return null;
+    return link;
+  }
+
+  function rememberTab() {
+    const current = document.querySelector(".tabbar [aria-current='page']");
+    const header = document.querySelector(".brand-section");
+    return {
+      current: current,
+      header: header,
+      headerText: header ? header.textContent : ""
+    };
+  }
+
+  function showTab(link) {
+    const bar = link.closest(".tabbar");
+    if (!bar) return;
+    const chosen = link.closest(".tabbar-more-panel")
+      ? bar.querySelector(".tabbar-more-toggle")
+      : link;
+    bar.querySelectorAll("[aria-current='page']").forEach(function (item) {
+      item.removeAttribute("aria-current");
+    });
+    if (chosen) chosen.setAttribute("aria-current", "page");
+    const title = link.getAttribute("data-title");
+    const header = document.querySelector(".brand-section");
+    if (title && header) header.textContent = title;
+    const panel = document.getElementById("menu-tab-mas");
+    if (panel && link.closest(".tabbar-more-panel")) {
+      panel.hidden = true;
+      const toggle = bar.querySelector(".tabbar-more-toggle");
+      if (toggle) toggle.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  function restoreTab() {
+    if (!tabMark) return;
+    const bar = document.querySelector(".tabbar");
+    if (bar) {
+      bar.querySelectorAll("[aria-current='page']").forEach(function (item) {
+        item.removeAttribute("aria-current");
+      });
+      if (tabMark.current && bar.contains(tabMark.current)) {
+        tabMark.current.setAttribute("aria-current", "page");
+      }
+    }
+    if (tabMark.header) tabMark.header.textContent = tabMark.headerText;
+    tabMark = null;
+  }
+
+  document.addEventListener("pointerdown", function (event) {
+    const link = tabLink(event);
+    if (!link) return;
+    tabCommitted = false;
+    tabMark = rememberTab();
+    showTab(link);
+  }, true);
+
+  document.addEventListener("pointercancel", function () {
+    if (!tabCommitted) restoreTab();
+  }, true);
+
+  document.addEventListener("click", function (event) {
+    const link = tabLink(event);
+    if (!link) return;
+    tabCommitted = true;
+    if (!tabMark) tabMark = rememberTab();
+    showTab(link);
+  }, true);
+
+  document.addEventListener("htmx:afterSettle", function () {
+    tabMark = null;
+    tabCommitted = false;
+  });
+  document.addEventListener("htmx:sendError", restoreTab);
+  document.addEventListener("htmx:responseError", restoreTab);
+
   let shopTimer = 0;
   function watchShop() {
     if (shopTimer || !document.getElementById("shop-live")) return;
