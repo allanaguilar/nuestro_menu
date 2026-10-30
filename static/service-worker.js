@@ -1,7 +1,7 @@
-const CACHE_NAME = "nuestro-menu-static-v49";
+const CACHE_NAME = "nuestro-menu-static-v50";
 const STATIC_ASSETS = [
   "/static/css/app.css",
-  "/static/css/app.css?v=42",
+  "/static/css/app.css?v=43",
   "/static/vendor/fontawesome/css/fontawesome.min.css",
   "/static/vendor/fontawesome/css/solid.min.css",
   "/static/vendor/fontawesome/css/regular.min.css",
