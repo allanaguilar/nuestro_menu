@@ -9,7 +9,7 @@ from django.views.generic import TemplateView
 
 from apps.core.mixins import HouseholdRequiredMixin, get_owned_or_404
 from apps.shopping.forms import AddShoppingItemForm
-from apps.shopping.models import ShoppingItem, ShoppingPushSubscription
+from apps.shopping.models import ShoppingItem, ShoppingPushSubscription, normalize_item_name
 from apps.shopping.push import added_notice, cleared_notice, notify_others
 from apps.shopping.selectors import shopping_page, touch_presence
 from apps.shopping.services import ShoppingError, add_shopping_item, clear_bought
@@ -29,16 +29,34 @@ def shop_state(request, form=None):
     return context
 
 
-def shop_json(request, form=None):
+def shop_json(request, form=None, extra=None):
     state = shop_state(request, form)
-    return JsonResponse(
-        {
-            "html": state["html"],
-            "revision": state["revision"],
-            "viewers": state["viewers"],
-            "pending": state["pending_label"],
-        }
-    )
+    payload = {
+        "html": state["html"],
+        "revision": state["revision"],
+        "viewers": state["viewers"],
+        "pending": state["pending_label"],
+    }
+    if extra:
+        payload.update(extra)
+    return JsonResponse(payload)
+
+
+def shop_form_error(form):
+    for error in form["name"].errors:
+        return str(error)
+    return "Escribe lo que falta."
+
+
+def shop_add_conflict(request, form, message):
+    matched = ShoppingItem.objects.filter(
+        household=request.household,
+        normalized_name=normalize_item_name(form.cleaned_data.get("name") or ""),
+    ).first()
+    extra = {"error": message}
+    if matched:
+        extra["matched_id"] = str(matched.pk)
+    return extra
 
 
 def wants_shop_fragment(request):
@@ -68,6 +86,8 @@ class AddShoppingItemView(HouseholdRequiredMixin, View):
                     request.household, form.cleaned_data["name"], request.user
                 )
             except ShoppingError as exc:
+                if wants_shop_fragment(request):
+                    return shop_json(request, form, shop_add_conflict(request, form, str(exc)))
                 form.add_error("name", str(exc))
             else:
                 notify_others(
@@ -76,7 +96,11 @@ class AddShoppingItemView(HouseholdRequiredMixin, View):
                     shop_client_key(request),
                     added_notice(request.user, item.name),
                 )
+                if wants_shop_fragment(request):
+                    return shop_json(request, extra={"created_id": str(item.pk)})
                 return redirect("shopping:list")
+        if wants_shop_fragment(request):
+            return shop_json(request, form, {"error": shop_form_error(form)})
         return render(
             request,
             "shopping/list.html",
@@ -120,6 +144,8 @@ class ClearBoughtView(HouseholdRequiredMixin, View):
                 shop_client_key(request),
                 cleared_notice(request.user),
             )
+        if wants_shop_fragment(request):
+            return shop_json(request)
         return redirect("shopping:list")
 
 

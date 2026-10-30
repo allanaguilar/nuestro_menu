@@ -6,22 +6,24 @@
     <h1>Lista de compra</h1>
     <p class="shop-sync" id="shop-viewers"{% if not viewers %} hidden{% endif %}>{{ viewers }}</p>
     <p class="lede" id="shop-pending"{% if not pending_label %} hidden{% endif %}>{{ pending_label }}</p>
+    <p class="shop-sync" id="shop-offline" hidden></p>
     {% if vapid_public_key %}
     <button type="button" class="button button-ghost" id="shop-push" data-key="{{ vapid_public_key }}" data-subscribe="{% url 'shopping:push' %}">Avisarme</button>
     {% endif %}
   </div>
 </div>
 
-<form class="shop-add" method="post" action="{% url 'shopping:add' %}">
+<form class="shop-add" method="post" action="{% url 'shopping:add' %}" hx-boost="false">
   {% csrf_token %}
   <input type="hidden" name="client_key" value="">
   <label for="{{ form.name.id_for_label }}">Qué falta</label>
   {{ form.name }}
-  {{ form.name.errors }}
+  <div id="shop-add-error"{% if not form.name.errors %} hidden{% endif %}>{{ form.name.errors }}</div>
   <button class="button" type="submit">Añadir</button>
 </form>
+{{ aisles|json_script:"shop-aisles" }}
 
-<div id="shop-live" data-revision="{{ revision }}" data-fragment="{% url 'shopping:fragment' %}">
+<div id="shop-live" data-revision="{{ revision }}" data-fragment="{% url 'shopping:fragment' %}" data-home="{{ request.household.id }}">
   {% include "shopping/live.html" %}
 </div>
 {% endblock %}

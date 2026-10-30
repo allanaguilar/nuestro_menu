@@ -200,3 +200,43 @@ class ShoppingListTests(TestCase):
         self.assertContains(home, "Lista de compra")
         self.assertContains(home, "quedan 2")
         self.assertContains(home, "Lista de compra</span>")
+
+    def test_phone_add_returns_the_new_id(self):
+        response = self.client.post(
+            "/lista/anadir/", {"name": "Leche"}, HTTP_X_SHOP="1"
+        )
+        self.assertEqual(response.status_code, 200)
+        item = ShoppingItem.objects.get()
+        self.assertEqual(response.json()["created_id"], str(item.pk))
+        self.assertIn("Leche", response.json()["html"])
+        self.assertIn('data-aisle="none"', response.json()["html"])
+
+    def test_phone_duplicate_points_at_the_existing_item(self):
+        self.client.post("/lista/anadir/", {"name": "Leche"})
+        item = ShoppingItem.objects.get()
+        response = self.client.post(
+            "/lista/anadir/", {"name": "leche"}, HTTP_X_SHOP="1"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["error"], "Ya está en la lista.")
+        self.assertEqual(response.json()["matched_id"], str(item.pk))
+        self.assertEqual(ShoppingItem.objects.filter(household=self.household).count(), 1)
+
+    def test_phone_clear_returns_the_list(self):
+        self.client.post("/lista/anadir/", {"name": "Pan"})
+        item = ShoppingItem.objects.get()
+        item.done = True
+        item.save(update_fields=["done"])
+        response = self.client.post("/lista/vaciar/", HTTP_X_SHOP="1")
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("Pan", response.json()["html"])
+        self.assertFalse(ShoppingItem.objects.exists())
+
+    def test_list_page_keeps_a_copy_for_the_phone(self):
+        self.client.post("/lista/anadir/", {"name": "Leche"})
+        page = self.client.get("/lista/")
+        item = ShoppingItem.objects.get()
+        self.assertContains(page, f'data-id="{item.pk}"')
+        self.assertContains(page, 'data-aisle="none"')
+        self.assertContains(page, 'id="shop-offline"')
+        self.assertContains(page, f'data-home="{self.household.id}"')

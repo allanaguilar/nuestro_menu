@@ -96,8 +96,13 @@
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
     if (form.classList.contains("shop-add")) {
+      event.preventDefault();
+      event.stopPropagation();
       const field = form.querySelector('input[name="client_key"]');
       if (field) field.value = shopClient();
+      const input = form.querySelector('input[name="name"]');
+      if (input) submitShopAdd(input);
+      return;
     }
     const button = event.submitter;
     if (form.classList.contains("day-rail-pick")) {
@@ -116,7 +121,7 @@
     if (form.closest("#shop-live")) {
       event.preventDefault();
       event.stopPropagation();
-      replaceShop(form.action, new FormData(form));
+      queueShopForm(form);
       return;
     }
     const message = button && button.getAttribute("data-confirm");
@@ -216,6 +221,27 @@
   document.addEventListener("htmx:timeout", releaseForm);
 
   let shopBusy = false;
+  let shopEpoch = 0;
+  let shopChain = Promise.resolve();
+  let shopBoot = null;
+  let flushing = null;
+  let shopReachable = navigator.onLine;
+  let shopAuthBlocked = false;
+  let memoryQueue = [];
+
+  const SHOP_ICONS = {
+    none: "fa-tag",
+    frutas: "fa-apple-whole",
+    verduras: "fa-carrot",
+    lacteos: "fa-bottle-droplet",
+    carnes: "fa-drumstick-bite",
+    pescados: "fa-fish",
+    fridge: "fa-snowflake",
+    pantry: "fa-jar",
+    cleaning: "fa-pump-soap",
+    other: "fa-ellipsis",
+    cart: "fa-cart-shopping",
+  };
 
   function shopClient() {
     const key = "nuestro-menu-shop";
@@ -245,41 +271,687 @@
     }
   }
 
-  function replaceShop(url, body) {
+  let latestBoard = null;
+  let shopDbPromise = null;
+
+  function shopHome() {
     const live = document.getElementById("shop-live");
-    if (!live) return;
-    const focused = document.activeElement;
-    const holdBoard = !body && focused && live.contains(focused) && focused.tagName === "SELECT";
-    shopBusy = true;
-    const options = { headers: { "X-Shop": "1", "X-Shop-Client": shopClient() } };
-    if (body) {
-      options.method = "POST";
-      options.body = body;
-    }
-    fetch(url, options)
-      .then(function (response) { return response.json(); })
-      .then(function (data) {
-        updateShopStatus(data);
-        if (!holdBoard && data.html && data.revision !== live.dataset.revision) {
-          live.innerHTML = data.html;
-          live.dataset.revision = data.revision;
+    if (live && live.dataset.home) return live.dataset.home;
+    return document.body.dataset.home || "";
+  }
+
+  function shopClean(name) {
+    return String(name || "").trim().replace(/\s+/g, " ");
+  }
+
+  function shopKey(name) {
+    return shopClean(name).toLocaleLowerCase("es");
+  }
+
+  function shopEscape(value) {
+    return String(value || "").replace(/[&<>"']/g, function (ch) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch];
+    });
+  }
+
+  function shopDb() {
+    if (!window.indexedDB) return Promise.reject(new Error("idb"));
+    if (shopDbPromise) return shopDbPromise;
+    shopDbPromise = new Promise(function (resolve, reject) {
+      const request = window.indexedDB.open("nuestro-menu-shop", 1);
+      request.onupgradeneeded = function () {
+        const db = request.result;
+        if (!db.objectStoreNames.contains("queue")) {
+          db.createObjectStore("queue", { keyPath: "id", autoIncrement: true });
         }
-      })
-      .catch(function () {})
-      .finally(function () { shopBusy = false; });
+        if (!db.objectStoreNames.contains("meta")) {
+          db.createObjectStore("meta", { keyPath: "home" });
+        }
+      };
+      request.onsuccess = function () { resolve(request.result); };
+      request.onerror = function () {
+        shopDbPromise = null;
+        reject(request.error);
+      };
+    });
+    return shopDbPromise;
+  }
+
+  function queueFor(home) {
+    if (!home) return Promise.resolve([]);
+    return shopDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        const request = db.transaction("queue", "readonly").objectStore("queue").getAll();
+        request.onsuccess = function () {
+          const rows = (request.result || []).filter(function (row) { return row.home === home; });
+          rows.sort(function (a, b) { return a.id - b.id; });
+          resolve(rows);
+        };
+        request.onerror = function () { reject(request.error); };
+      });
+    }).catch(function () { return []; });
+  }
+
+  function loadBoard(home) {
+    if (!home) return Promise.resolve(null);
+    return shopDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        const request = db.transaction("meta", "readonly").objectStore("meta").get(home);
+        request.onsuccess = function () { resolve(request.result || null); };
+        request.onerror = function () { reject(request.error); };
+      });
+    }).catch(function () { return null; });
+  }
+
+  function rememberBoard() {
+    const live = document.getElementById("shop-live");
+    if (!live) return null;
+    const pending = document.getElementById("shop-pending");
+    latestBoard = {
+      home: shopHome(),
+      html: live.innerHTML,
+      pending: pending && !pending.hidden ? pending.textContent : "",
+      revision: live.dataset.revision || "",
+    };
+    return latestBoard;
+  }
+
+  function saveBoard() {
+    const record = rememberBoard();
+    if (!record || !record.home) return Promise.resolve();
+    return shopDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        const tx = db.transaction("meta", "readwrite");
+        tx.objectStore("meta").put(record);
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    }).catch(function () {});
+  }
+
+  function persistNew(record) {
+    return shopDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        const request = db.transaction("queue", "readwrite").objectStore("queue").add(record);
+        request.onsuccess = function () {
+          record.id = request.result;
+          resolve(record);
+        };
+        request.onerror = function () { reject(request.error); };
+      });
+    });
+  }
+
+  function deleteQueue(id) {
+    if (typeof id !== "number") return Promise.resolve();
+    return shopDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        const tx = db.transaction("queue", "readwrite");
+        tx.objectStore("queue").delete(id);
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    }).catch(function () {});
+  }
+
+  function dropMemory(id) {
+    memoryQueue = memoryQueue.filter(function (row) { return row.id !== id; });
+  }
+
+  function remapQueue(from, to) {
+    const home = shopHome();
+    memoryQueue.forEach(function (row) {
+      if (row.itemId === from) row.itemId = to;
+    });
+    return shopDb().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        const tx = db.transaction("queue", "readwrite");
+        const request = tx.objectStore("queue").openCursor();
+        request.onsuccess = function () {
+          const cursor = request.result;
+          if (!cursor) return;
+          if (cursor.value.home === home && cursor.value.itemId === from) {
+            const value = cursor.value;
+            value.itemId = to;
+            cursor.update(value);
+          }
+          cursor.continue();
+        };
+        tx.oncomplete = function () { resolve(); };
+        tx.onerror = function () { reject(tx.error); };
+      });
+    }).catch(function () {});
+  }
+
+  function shopAisles() {
+    const node = document.getElementById("shop-aisles");
+    if (node) {
+      try {
+        const parsed = JSON.parse(node.textContent);
+        if (parsed && parsed.length) return parsed;
+      } catch (err) {
+        /* usa la lista fija */
+      }
+    }
+    return [
+      ["none", "Sin pasillo"],
+      ["frutas", "Frutas"],
+      ["verduras", "Verduras"],
+      ["lacteos", "Lácteos"],
+      ["carnes", "Carnes"],
+      ["pescados", "Pescados"],
+      ["fridge", "Nevera"],
+      ["pantry", "Despensa"],
+      ["cleaning", "Limpieza"],
+      ["other", "Otros"],
+    ];
+  }
+
+  function shopAisleAllowed(value) {
+    return shopAisles().some(function (pair) { return pair[0] === value; });
+  }
+
+  function shopPendingLabel(items) {
+    if (!items.length) return "";
+    const count = items.filter(function (item) { return !item.done; }).length;
+    if (count === 0) return "No queda nada";
+    if (count === 1) return "Queda 1";
+    return "Quedan " + count;
+  }
+
+  function shopCsrfInput() {
+    return '<input type="hidden" name="csrfmiddlewaretoken" value="' + shopEscape(csrfToken()) + '">';
+  }
+
+  function shopAisleOptions(current) {
+    return shopAisles().map(function (pair) {
+      const selected = pair[0] === current ? " selected" : "";
+      return '<option value="' + shopEscape(pair[0]) + '"' + selected + ">" + shopEscape(pair[1]) + "</option>";
+    }).join("");
+  }
+
+  function shopItemHtml(item) {
+    const name = shopEscape(item.name);
+    const id = encodeURIComponent(item.id);
+    const rawId = shopEscape(item.id);
+    const checked = item.done ? " checked" : "";
+    const doneClass = item.done ? " is-done" : "";
+    const action = item.done ? "Devolver " + name + " a la lista" : "Marcar " + name + " como comprado";
+    const fresh = item.fresh
+      ? '<span class="shop-who">' + shopEscape(item.fresh) + " lo añadió ahora</span>"
+      : "";
+    const aisle = item.done ? "" : (
+      '<form method="post" action="/lista/' + id + '/pasillo/">' +
+      shopCsrfInput() +
+      '<label class="sr-only" for="aisle-' + rawId + '">Pasillo de ' + name + "</label>" +
+      '<select id="aisle-' + rawId + '" class="field-input shop-aisle-select" name="aisle" onchange="this.form.requestSubmit()">' +
+      shopAisleOptions(item.aisle) +
+      "</select></form>"
+    );
+    return '<li class="shop-item' + doneClass + '" data-id="' + rawId + '" data-aisle="' + shopEscape(item.aisle || "none") + '" data-fresh="' + shopEscape(item.fresh || "") + '">' +
+      '<form method="post" action="/lista/' + id + '/hecho/">' +
+      shopCsrfInput() +
+      '<label class="check"><input type="hidden" name="done" value="0">' +
+      '<input type="checkbox" name="done" value="1"' + checked + ' aria-label="' + action + '" onchange="this.form.requestSubmit()">' +
+      '<span class="shop-copy"><span class="shop-name">' + name + "</span>" + fresh + "</span></label></form>" +
+      aisle + "</li>";
+  }
+
+  function shopAisleHtml(key, label, group) {
+    const icon = SHOP_ICONS[key] || "fa-tag";
+    return '<section class="shop-aisle" aria-labelledby="pasillo-' + shopEscape(key) + '">' +
+      '<h2 id="pasillo-' + shopEscape(key) + '"><i class="icon fa-solid ' + icon + '" aria-hidden="true"></i><span>' +
+      shopEscape(label) + "</span></h2><ul class=\"shop-list\">" + group.map(shopItemHtml).join("") + "</ul></section>";
+  }
+
+  function shopBoardHtml(items) {
+    if (!items.length) return '<p class="lede">La lista está al día. Escribe lo que falte.</p>';
+    const aisles = shopAisles();
+    const pending = items.filter(function (item) { return !item.done; }).sort(function (a, b) {
+      if (a.name < b.name) return -1;
+      if (a.name > b.name) return 1;
+      return 0;
+    });
+    const cart = items.filter(function (item) { return item.done; }).sort(function (a, b) {
+      if (a.name < b.name) return -1;
+      if (a.name > b.name) return 1;
+      return 0;
+    });
+    const known = {};
+    aisles.forEach(function (pair) { known[pair[0]] = true; });
+    let html = '<div class="shop-board">';
+    aisles.forEach(function (pair) {
+      const group = pending.filter(function (item) { return item.aisle === pair[0]; });
+      if (group.length) html += shopAisleHtml(pair[0], pair[1], group);
+    });
+    const stray = pending.filter(function (item) { return !known[item.aisle]; });
+    if (stray.length) html += shopAisleHtml("other", "Otros", stray);
+    if (cart.length) {
+      html += '<section class="shop-aisle shop-cart" aria-labelledby="en-el-carro">' +
+        '<h2 id="en-el-carro"><i class="icon fa-solid fa-cart-shopping" aria-hidden="true"></i><span>En el carro</span></h2>' +
+        '<ul class="shop-list">' + cart.map(shopItemHtml).join("") + "</ul>" +
+        '<form method="post" action="/lista/vaciar/">' + shopCsrfInput() +
+        '<button class="button button-ghost" type="submit">Vaciar lo comprado</button></form></section>';
+    }
+    return html + "</div>";
+  }
+
+  function readShopItems(root) {
+    const items = [];
+    root.querySelectorAll(".shop-item").forEach(function (row) {
+      const nameEl = row.querySelector(".shop-name");
+      if (!nameEl) return;
+      let id = row.dataset.id || "";
+      if (!id) {
+        const form = row.querySelector("form[action]");
+        const match = form && (form.getAttribute("action") || "").match(/\/lista\/([^/]+)\/(?:hecho|pasillo)\/?$/);
+        id = match ? decodeURIComponent(match[1]) : "";
+      }
+      if (!id) return;
+      const box = row.querySelector('input[type="checkbox"]');
+      const select = row.querySelector('select[name="aisle"]');
+      items.push({
+        id: id,
+        name: nameEl.textContent,
+        done: box ? box.checked : row.classList.contains("is-done"),
+        aisle: (select && select.value) || row.dataset.aisle || "none",
+        fresh: row.dataset.fresh || "",
+      });
+    });
+    return items;
+  }
+
+  function writeShopBoard(live, items) {
+    live.innerHTML = shopBoardHtml(items);
+    live.dataset.revision = "local";
+    const label = document.getElementById("shop-pending");
+    const text = shopPendingLabel(items);
+    if (label) {
+      label.textContent = text;
+      label.hidden = !text;
+    }
+    return saveBoard();
+  }
+
+  function showAddError(message) {
+    const slot = document.getElementById("shop-add-error");
+    if (!slot) return;
+    if (!message) {
+      slot.textContent = "";
+      slot.hidden = true;
+      return;
+    }
+    slot.hidden = false;
+    slot.innerHTML = '<ul class="errorlist"><li>' + shopEscape(message) + "</li></ul>";
+  }
+
+  function refreshShopStatus() {
+    const node = document.getElementById("shop-offline");
+    if (!node) return;
+    const waiting = memoryQueue.length > 0;
+    let message = "";
+    if (shopAuthBlocked && waiting) message = "Entra de nuevo para enviar los cambios.";
+    else if (waiting && (!navigator.onLine || !shopReachable)) {
+      message = "Sin conexión. Los cambios se enviarán al volver la red.";
+    } else if (waiting) message = "Enviando los cambios guardados…";
+    else if (!navigator.onLine) message = "Sin conexión. Estás viendo la última lista guardada.";
+    node.textContent = message;
+    node.hidden = !message;
+  }
+
+  function applyShopOp(op) {
+    const live = document.getElementById("shop-live");
+    if (!live) return { ok: false };
+    const items = readShopItems(live);
+    if (op.kind === "add") {
+      const name = shopClean(op.name);
+      if (!name) return { ok: false, error: "Escribe lo que falta." };
+      if (items.some(function (item) { return shopKey(item.name) === shopKey(name); })) {
+        return { ok: false, error: "Ya está en la lista." };
+      }
+      items.push({ id: op.localId, name: name, aisle: "none", done: false, fresh: "" });
+    } else if (op.kind === "toggle") {
+      const item = items.find(function (entry) { return entry.id === op.itemId; });
+      if (!item) return { ok: false };
+      item.done = op.done === "1";
+    } else if (op.kind === "aisle") {
+      const item = items.find(function (entry) { return entry.id === op.itemId; });
+      if (!item || item.done || !shopAisleAllowed(op.aisle)) return { ok: false };
+      item.aisle = op.aisle;
+    } else if (op.kind === "clear") {
+      for (let index = items.length - 1; index >= 0; index -= 1) {
+        if (items[index].done) items.splice(index, 1);
+      }
+    } else return { ok: false };
+    shopEpoch += 1;
+    writeShopBoard(live, items);
+    return { ok: true };
+  }
+
+  function removeLocal(localId) {
+    const live = document.getElementById("shop-live");
+    if (!live || !localId) return Promise.resolve();
+    const items = readShopItems(live).filter(function (item) { return item.id !== localId; });
+    return writeShopBoard(live, items);
+  }
+
+  function remapLocal(from, to) {
+    const live = document.getElementById("shop-live");
+    if (live) {
+      const items = readShopItems(live);
+      let changed = false;
+      items.forEach(function (item) {
+        if (item.id === from) {
+          item.id = to;
+          changed = true;
+        }
+      });
+      if (changed) writeShopBoard(live, items);
+    }
+    return remapQueue(from, to);
+  }
+
+  function restoreBoard(live, board) {
+    live.innerHTML = board.html;
+    if (board.revision) live.dataset.revision = board.revision;
+    const label = document.getElementById("shop-pending");
+    if (label) {
+      label.textContent = board.pending || "";
+      label.hidden = !board.pending;
+    }
+  }
+
+  function cacheListDocument() {
+    if (!window.caches || !navigator.onLine || location.pathname !== "/lista/") return;
+    window.caches.open("nuestro-menu-lista").then(function (cache) {
+      return cache.add(new Request("/lista/", { credentials: "same-origin" }));
+    }).catch(function () {});
+  }
+
+  function bootShop(live) {
+    const home = live.dataset.home || shopHome();
+    return Promise.all([loadBoard(home), queueFor(home)]).then(function (result) {
+      const saved = result[0];
+      const pendingLocal = memoryQueue.filter(function (row) { return !row.id; });
+      memoryQueue = result[1].concat(pendingLocal);
+      const board = latestBoard && latestBoard.home === home ? latestBoard : saved;
+      if ((memoryQueue.length || !navigator.onLine) && board && board.html) {
+        restoreBoard(live, board);
+        return;
+      }
+      return saveBoard();
+    }).then(function () {
+      refreshShopStatus();
+      cacheListDocument();
+    });
+  }
+
+  function submitShopAdd(input) {
+    const name = shopClean(input.value);
+    if (!name) {
+      showAddError("Escribe lo que falta.");
+      return;
+    }
+    if (name.length > 120) {
+      showAddError("Asegúrate de que este valor tenga como máximo 120 caracteres (tiene " + name.length + ").");
+      return;
+    }
+    enqueueAndFlush({
+      kind: "add",
+      name: name,
+      localId: "local-" + Math.random().toString(36).slice(2) + Date.now().toString(36),
+    });
+  }
+
+  function queueShopForm(form) {
+    const action = form.getAttribute("action") || form.action || "";
+    if (/\/vaciar\/?$/.test(action)) {
+      enqueueAndFlush({ kind: "clear" });
+      return;
+    }
+    const toggle = action.match(/\/lista\/([^/]+)\/hecho\/?$/);
+    if (toggle) {
+      const box = form.querySelector('input[type="checkbox"]');
+      enqueueAndFlush({
+        kind: "toggle",
+        itemId: decodeURIComponent(toggle[1]),
+        done: box && box.checked ? "1" : "0",
+      });
+      return;
+    }
+    const aisle = action.match(/\/lista\/([^/]+)\/pasillo\/?$/);
+    if (!aisle) return;
+    const select = form.querySelector('select[name="aisle"]');
+    enqueueAndFlush({
+      kind: "aisle",
+      itemId: decodeURIComponent(aisle[1]),
+      aisle: select ? select.value : "",
+    });
+  }
+
+  function enqueueAndFlush(op) {
+    const applied = applyShopOp(op);
+    if (!applied.ok) {
+      if (applied.error) showAddError(applied.error);
+      return;
+    }
+    if (op.kind === "add") {
+      const input = document.querySelector('.shop-add input[name="name"]');
+      if (input) input.value = "";
+      showAddError("");
+    }
+    const record = {
+      home: shopHome(),
+      kind: op.kind,
+      localId: op.localId || "",
+      itemId: op.itemId || "",
+      name: op.name || "",
+      done: op.done || "",
+      aisle: op.aisle || "",
+    };
+    if (!record.home) return;
+    memoryQueue.push(record);
+    shopBusy = true;
+    refreshShopStatus();
+    shopChain = shopChain.then(function () {
+      return persistNew(record).catch(function () {
+        record.id = "mem-" + Date.now() + "-" + memoryQueue.length;
+        return record;
+      }).then(function () { return flushQueue(); });
+    }).catch(function () {
+      refreshShopStatus();
+    }).finally(function () {
+      if (!memoryQueue.length) shopBusy = false;
+    });
+  }
+
+  function sendShopOp(op) {
+    const body = new FormData();
+    body.append("csrfmiddlewaretoken", csrfToken());
+    let url = "";
+    if (op.kind === "add") {
+      url = "/lista/anadir/";
+      body.append("name", op.name);
+      body.append("client_key", shopClient());
+    } else if (op.kind === "toggle") {
+      url = "/lista/" + encodeURIComponent(op.itemId) + "/hecho/";
+      body.append("done", op.done === "1" ? "1" : "0");
+    } else if (op.kind === "aisle") {
+      url = "/lista/" + encodeURIComponent(op.itemId) + "/pasillo/";
+      body.append("aisle", op.aisle || "");
+    } else if (op.kind === "clear") {
+      url = "/lista/vaciar/";
+    } else return Promise.resolve({ skip: true });
+    return fetch(url, {
+      method: "POST",
+      body: body,
+      credentials: "same-origin",
+      headers: {
+        "X-Shop": "1",
+        "X-Shop-Client": shopClient(),
+        "X-CSRFToken": csrfToken(),
+      },
+    }).then(readShopResponse).catch(function () { return { offline: true }; });
+  }
+
+  function readShopResponse(response) {
+    if ((response.redirected && response.url.indexOf("/cuentas/") !== -1) || response.status === 403) {
+      return { auth: true };
+    }
+    if (response.status === 404) return { skip: true };
+    const type = response.headers.get("content-type") || "";
+    if (type.indexOf("application/json") === -1) return { retry: true };
+    return response.json().then(function (data) {
+      return {
+        html: data.html || "",
+        revision: data.revision || "",
+        pending: data.pending || "",
+        viewers: data.viewers || "",
+        created: data.created_id || "",
+        matched: data.matched_id || "",
+        error: data.error || "",
+      };
+    }).catch(function () { return { retry: true }; });
+  }
+
+  function applyServerShop(data) {
+    const live = document.getElementById("shop-live");
+    if (!live || !data) return Promise.resolve();
+    updateShopStatus(data);
+    if (data.html) {
+      live.innerHTML = data.html;
+      if (data.revision) live.dataset.revision = data.revision;
+    }
+    shopReachable = true;
+    return saveBoard();
+  }
+
+  function drainQueue() {
+    const epoch = shopEpoch;
+    const home = shopHome();
+    function finish(result) {
+      if (memoryQueue.length) return step();
+      if (shopEpoch !== epoch) return null;
+      if (result && result.html) return applyServerShop(result);
+      return refreshFromServer();
+    }
+    function step() {
+      const op = memoryQueue[0];
+      if (!op || op.home !== home || !op.id) return Promise.resolve();
+      return sendShopOp(op).then(function (result) {
+        if (result.offline || result.retry) {
+          shopReachable = false;
+          return null;
+        }
+        if (result.auth) {
+          shopAuthBlocked = true;
+          shopReachable = true;
+          return null;
+        }
+        shopAuthBlocked = false;
+        shopReachable = true;
+        if (result.skip) {
+          return deleteQueue(op.id).then(function () {
+            dropMemory(op.id);
+            return finish(null);
+          });
+        }
+        const mapped = result.created || result.matched;
+        return deleteQueue(op.id).then(function () {
+          dropMemory(op.id);
+          if (op.localId && mapped) return remapLocal(op.localId, mapped);
+          if (result.error && op.localId && memoryQueue.length) return removeLocal(op.localId);
+        }).then(function () {
+          if (result.error) showAddError(result.error);
+          else if (op.kind === "add") showAddError("");
+          return finish(result);
+        });
+      });
+    }
+    return step();
+  }
+
+  function flushQueue() {
+    if (!shopHome()) return Promise.resolve();
+    if (!navigator.onLine) {
+      shopReachable = false;
+      refreshShopStatus();
+      return Promise.resolve();
+    }
+    if (!memoryQueue.length) {
+      refreshShopStatus();
+      return Promise.resolve();
+    }
+    if (flushing) return flushing;
+    shopBusy = true;
+    flushing = drainQueue().finally(function () {
+      flushing = null;
+      shopBusy = false;
+      refreshShopStatus();
+    });
+    return flushing;
+  }
+
+  function replaceShop(url) {
+    const live = document.getElementById("shop-live");
+    if (!live) return Promise.resolve();
+    const epoch = shopEpoch;
+    const focused = document.activeElement;
+    const holdBoard = focused && live.contains(focused) && focused.tagName === "SELECT";
+    return fetch(url, {
+      credentials: "same-origin",
+      headers: { "X-Shop": "1", "X-Shop-Client": shopClient() },
+    }).then(function (response) {
+      if (response.redirected && response.url.indexOf("/cuentas/") !== -1) {
+        shopAuthBlocked = true;
+        return null;
+      }
+      const type = response.headers.get("content-type") || "";
+      if (type.indexOf("application/json") === -1) throw new Error("shop");
+      return response.json();
+    }).then(function (data) {
+      if (!data || shopEpoch !== epoch || memoryQueue.length) return;
+      shopReachable = true;
+      shopAuthBlocked = false;
+      updateShopStatus(data);
+      if (!holdBoard && data.html && data.revision !== live.dataset.revision) {
+        live.innerHTML = data.html;
+        if (data.revision) live.dataset.revision = data.revision;
+      }
+      if (!holdBoard) return saveBoard();
+    }).catch(function () {
+      shopReachable = false;
+      refreshShopStatus();
+    });
+  }
+
+  function refreshFromServer() {
+    const live = document.getElementById("shop-live");
+    if (!live || !live.dataset.fragment) return Promise.resolve();
+    return replaceShop(live.dataset.fragment);
   }
 
   function pollShop() {
     const live = document.getElementById("shop-live");
-    if (!live || shopBusy || !live.dataset.fragment) return;
+    if (!live || !live.dataset.fragment || flushing) return;
+    if (!navigator.onLine) {
+      shopReachable = false;
+      refreshShopStatus();
+      return;
+    }
+    if (memoryQueue.length) {
+      flushQueue();
+      return;
+    }
+    if (shopBusy) return;
     replaceShop(live.dataset.fragment);
   }
 
   function csrfToken() {
-    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
-    if (input && input.value) return input.value;
     const match = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : "";
+    if (match) return decodeURIComponent(match[1]);
+    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    return input && input.value ? input.value : "";
   }
 
   function urlBase64ToUint8Array(value) {
@@ -489,10 +1161,43 @@
 
   let shopTimer = 0;
   function watchShop() {
-    if (shopTimer || !document.getElementById("shop-live")) return;
-    pollShop();
-    shopTimer = window.setInterval(pollShop, 4000);
+    const live = document.getElementById("shop-live");
+    if (!live) {
+      const home = shopHome();
+      if (!home) return;
+      queueFor(home).then(function (rows) {
+        const pendingLocal = memoryQueue.filter(function (row) { return !row.id; });
+        if (!memoryQueue.some(function (row) { return row.id; })) memoryQueue = rows.concat(pendingLocal);
+        if (navigator.onLine) return flushQueue();
+      }).catch(function () {});
+      return;
+    }
+    if (live.dataset.offlineReady !== "1") {
+      live.dataset.offlineReady = "1";
+      shopBusy = true;
+      shopBoot = bootShop(live).finally(function () {
+        shopBusy = false;
+        refreshShopStatus();
+      });
+    }
+    Promise.resolve(shopBoot).then(function () {
+      if (!document.getElementById("shop-live")) return;
+      if (navigator.onLine) return flushQueue();
+    }).then(function () {
+      if (shopTimer || !document.getElementById("shop-live")) return;
+      pollShop();
+      shopTimer = window.setInterval(pollShop, 4000);
+    });
   }
+  window.addEventListener("online", function () {
+    shopReachable = true;
+    shopAuthBlocked = false;
+    flushQueue();
+  });
+  window.addEventListener("offline", function () {
+    shopReachable = false;
+    refreshShopStatus();
+  });
   watchShop();
   watchPush();
   document.addEventListener("htmx:afterSettle", function () {

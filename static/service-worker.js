@@ -1,14 +1,15 @@
-const CACHE_NAME = "nuestro-menu-static-v52";
+const CACHE_NAME = "nuestro-menu-static-v53";
+const LIST_CACHE = "nuestro-menu-lista";
 const STATIC_ASSETS = [
   "/static/css/app.css",
-  "/static/css/app.css?v=43",
+  "/static/css/app.css?v=44",
   "/static/vendor/fontawesome/css/fontawesome.min.css",
   "/static/vendor/fontawesome/css/solid.min.css",
   "/static/vendor/fontawesome/css/regular.min.css",
   "/static/vendor/fontawesome/webfonts/fa-solid-900.woff2",
   "/static/vendor/fontawesome/webfonts/fa-regular-400.woff2",
   "/static/js/app.js",
-  "/static/js/app.js?v=29",
+  "/static/js/app.js?v=30",
   "/static/js/htmx.min.js",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",
@@ -27,7 +28,11 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
+      Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME && key !== LIST_CACHE)
+          .map((key) => caches.delete(key))
+      )
     )
   );
   self.clients.claim();
@@ -92,6 +97,7 @@ function takeTabPrefetch(request) {
     headers.delete("content-encoding");
     headers.delete("content-length");
     headers.set("X-Tab-Joined", "1");
+    if (response.url) headers.set("X-Final-Url", response.url);
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
@@ -100,9 +106,36 @@ function takeTabPrefetch(request) {
   });
 }
 
+function storeList(request, response) {
+  try {
+    const url = new URL(request.url);
+    if (url.origin !== self.location.origin || url.pathname !== "/lista/" || url.search) return;
+    if (!response || !response.ok) return;
+    const type = response.headers.get("content-type") || "";
+    if (type.indexOf("text/html") === -1) return;
+    const finalUrl = response.headers.get("X-Final-Url") || response.url || request.url;
+    if (new URL(finalUrl, self.location.origin).pathname !== "/lista/") return;
+    const copy = response.clone();
+    caches.open(LIST_CACHE).then((cache) => cache.put("/lista/", copy)).catch(() => {});
+  } catch (err) {
+    /* la lista sigue disponible en red */
+  }
+}
+
+function listFallback() {
+  return caches.open(LIST_CACHE).then((cache) =>
+    cache.match("/lista/").then((cached) => cached || caches.match("/offline/"))
+  );
+}
+
 function networkOrOffline(request) {
-  return fetch(request).catch(() =>
-    caches.match(request).then((cached) => cached || caches.match("/offline/"))
+  const list = new URL(request.url).pathname === "/lista/";
+  return fetch(request).then(
+    (response) => {
+      storeList(request, response);
+      return response;
+    },
+    () => (list ? listFallback() : caches.match(request).then((cached) => cached || caches.match("/offline/")))
   );
 }
 
@@ -136,7 +169,14 @@ self.addEventListener("fetch", (event) => {
   }
   const shared = takeTabPrefetch(request);
   if (shared) {
-    event.respondWith(shared.catch(() => networkOrOffline(request)));
+    event.respondWith(
+      shared
+        .then((response) => {
+          storeList(request, response);
+          return response;
+        })
+        .catch(() => networkOrOffline(request))
+    );
     return;
   }
   event.respondWith(networkOrOffline(request));

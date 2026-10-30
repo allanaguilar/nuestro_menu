@@ -1,4 +1,4 @@
-<li class="shop-item{% if item.done %} is-done{% endif %}">
+<li class="shop-item{% if item.done %} is-done{% endif %}" data-id="{{ item.pk }}" data-aisle="{{ item.aisle }}" data-fresh="{{ item.fresh_from }}">
   <form method="post" action="{% url 'shopping:toggle' item.pk %}">
     {% csrf_token %}
     <label class="check">
