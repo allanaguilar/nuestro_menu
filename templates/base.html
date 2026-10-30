@@ -13,13 +13,19 @@
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/fontawesome.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/solid.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/regular.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=41">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=42">
   </head>
-  <body hx-boost="true">
+  {% with ns=request.resolver_match.namespace un=request.resolver_match.url_name %}
+  <body hx-boost="true"{% if user.is_authenticated %}{% if ns != "core" or un != "dashboard" %} class="section-headed"{% endif %}{% endif %}>
     <a class="skip-link" href="#contenido">Saltar al contenido</a>
     <header class="site-header">
       <div class="wrap header-inner">
-        <a class="brand" href="{% url 'core:dashboard' %}">Nuestro Menú</a>
+        <a class="brand" href="{% url 'core:dashboard' %}">
+          <span class="brand-name">Nuestro Menú</span>
+          {% if user.is_authenticated %}
+          <span class="brand-section">{% if ns == "shopping" %}Lista de compra{% elif ns == "meal_plans" and un == "history" %}Historial de menús{% elif ns == "meal_plans" %}Menú semanal{% elif ns == "baby" and un == "foods" %}Alimentos del bebé{% elif ns == "baby" and un == "edit" %}Editar alimento{% elif ns == "baby" %}Bebé{% elif ns == "recipes" and un == "import" %}Importar recetas{% elif ns == "recipes" and un == "create" %}Nueva receta{% elif ns == "recipes" and un == "update" %}Editar receta{% elif ns == "recipes" %}Recetario{% elif ns == "preferences" %}Preferencias{% elif ns == "households" %}Ajustes del hogar{% elif un == "install" %}Instalar Nuestro Menú{% else %}Inicio{% endif %}</span>
+          {% endif %}
+        </a>
         {% if user.is_authenticated %}
         <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="menu-principal" aria-label="Abrir menú">
           <span class="nav-toggle-bars" aria-hidden="true"><span></span><span></span><span></span></span>
@@ -88,4 +94,5 @@
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
     <script src="{% static 'js/app.js' %}?v=27" defer></script>
   </body>
+  {% endwith %}
 </html>
