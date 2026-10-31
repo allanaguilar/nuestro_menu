@@ -1103,12 +1103,17 @@
     const title = link.getAttribute("data-title");
     const header = document.querySelector(".brand-section");
     if (title && header) header.textContent = title;
+  }
+
+  function closeMoreTab(link) {
+    if (!link.closest(".tabbar-more-panel")) return;
     const panel = document.getElementById("menu-tab-mas");
-    if (panel && link.closest(".tabbar-more-panel")) {
-      panel.hidden = true;
-      const toggle = bar.querySelector(".tabbar-more-toggle");
+    const bar = link.closest(".tabbar");
+    window.setTimeout(function () {
+      if (panel) panel.hidden = true;
+      const toggle = bar && bar.querySelector(".tabbar-more-toggle");
       if (toggle) toggle.setAttribute("aria-expanded", "false");
-    }
+    }, 0);
   }
 
   function restoreTab() {
@@ -1149,6 +1154,7 @@
     else dropTabPrefetch();
     if (!tabMark) tabMark = rememberTab();
     showTab(link);
+    closeMoreTab(link);
   }, true);
 
   document.addEventListener("htmx:afterSettle", function () {
