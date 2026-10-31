@@ -21,12 +21,13 @@
       {% if field.is_hidden %}
         {{ field }}
       {% else %}
-        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <abbr class="req" title="Obligatorio">*</abbr>{% endif %}</label>
         {{ field }}
-        {% if field.help_text %}<p class="hint">{{ field.help_text }}</p>{% endif %}
-        {% for error in field.errors %}
-        <p class="message message-error" role="alert">{{ error }}</p>
-        {% endfor %}
+        {% if field.errors %}
+        <div class="message message-error" id="{{ field.auto_id }}_error" role="alert">
+          {% for error in field.errors %}<p>{{ error }}</p>{% endfor %}
+        </div>
+        {% endif %}
       {% endif %}
     {% endfor %}
     <div class="auth-actions">

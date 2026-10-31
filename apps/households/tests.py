@@ -53,6 +53,55 @@ class HouseholdTests(TestCase):
         self.assertContains(response, "Copiar enlace")
         self.assertContains(response, 'id="invite-url"')
 
+    def test_new_invite_link_is_shown_once(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        response = self.client.post("/hogar/invitar/", follow=True)
+        invite = HouseholdInvite.objects.get(household=self.household)
+        self.assertContains(response, "Invitación creada.")
+        self.assertContains(response, "Copiar enlace")
+        self.assertEqual(response.content.count(invite.token.encode()), 1)
+
+    def test_signup_marks_required_fields_and_keeps_rules_for_errors(self):
+        page = self.client.get("/cuentas/registro/")
+        self.assertContains(page, 'class="req"')
+        self.assertContains(page, "Usuario")
+        self.assertContains(page, "Nombre del hogar")
+        self.assertNotContains(page, "150 caracteres")
+        self.assertNotContains(page, "Al menos 8")
+        self.assertNotContains(page, "Obligatorio si no usas")
+        response = self.client.post(
+            "/cuentas/registro/",
+            {
+                "username": "mal usuario",
+                "first_name": "Ana",
+                "email": "ana@example.com",
+                "household_name": "Casa",
+                "password1": "corta",
+                "password2": "corta",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "letras, números")
+        self.assertNotContains(response, "demasiado corta")
+        self.assertNotContains(response, "demasiado común")
+        self.assertContains(response, 'role="alert"')
+        self.assertFalse(User.objects.filter(username="mal usuario").exists())
+
+    def test_short_password_is_accepted(self):
+        response = self.client.post(
+            "/cuentas/registro/",
+            {
+                "username": "ana",
+                "first_name": "Ana",
+                "email": "ana@example.com",
+                "household_name": "Casa",
+                "password1": "demo",
+                "password2": "demo",
+            },
+        )
+        self.assertRedirects(response, "/inicio/")
+        self.assertTrue(User.objects.get(username="ana").check_password("demo"))
+
     def test_invite_signup_asks_only_for_the_account(self):
         invite = create_invite(self.household, self.owner)
         page = self.client.get(f"/cuentas/registro/?token={invite.token}")
@@ -84,20 +133,18 @@ class HouseholdTests(TestCase):
             ).exists()
         )
 
-    def test_short_invite_password_explains_why(self):
+    def test_short_invite_password_is_accepted(self):
         invite = create_invite(self.household, self.owner)
         response = self.client.post(
             "/cuentas/registro/",
             {
                 "username": "mario",
-                "password1": "mario",
+                "password1": "demo",
                 "invite_token": invite.token,
             },
         )
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "demasiado corta")
-        self.assertContains(response, 'role="alert"')
-        self.assertFalse(User.objects.filter(username="mario").exists())
+        self.assertRedirects(response, "/inicio/")
+        self.assertTrue(User.objects.get(username="mario").check_password("demo"))
 
     def test_settings_requires_login(self):
         response = self.client.get("/hogar/")

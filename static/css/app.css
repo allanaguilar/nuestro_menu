@@ -206,6 +206,7 @@ main > h1 + .lede, .hero .lede, .page-head .lede {
   background: #fff; font: inherit; min-height: 44px;
 }
 label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
+.req { color: var(--err); text-decoration: none; font-weight: 700; }
 .auth-card, .panel {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 1.2rem; box-shadow: var(--shadow);
@@ -438,6 +439,14 @@ textarea.recipe-text {
   margin-top: 0.9rem;
 }
 .invite-box p { margin: 0; font-weight: 700; }
+.invite-box code {
+  display: block;
+  width: 100%;
+  padding: 0.7rem 0.85rem;
+  background: var(--card);
+  border-radius: 12px;
+  word-break: break-all;
+}
 .shop-board { width: min(40rem, 100%); margin: 0 auto 1.2rem; }
 .shop-aisle h2 {
   display: flex;
@@ -639,6 +648,8 @@ textarea.recipe-text {
 .notice { background: #f8ead4; border-radius: 14px; padding: 0.9rem 1rem; }
 .messages { list-style: none; padding: 0; }
 .message { padding: 0.8rem 1rem; border-radius: 12px; margin-bottom: 0.6rem; }
+.message p { margin: 0; }
+.message p + p { margin-top: 0.35rem; }
 .message-success { background: #dce8d8; }
 .message-error { background: #f8d8d3; }
 .errorlist, .error-list { color: var(--err); padding-left: 1.1rem; }

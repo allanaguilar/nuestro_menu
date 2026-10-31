@@ -42,32 +42,23 @@ class SignUpForm(StyledFormMixin, UserCreationForm):
             self.fields.pop("household_name", None)
             self.fields["email"].required = False
             self.fields["email"].label = "Correo"
-            self.fields["email"].help_text = "Opcional. Sirve para recuperar la contraseña."
-            self.fields["username"].help_text = ""
-            self.fields["password1"].help_text = "Al menos 8 caracteres y distinta del usuario."
             self.fields["password2"].required = False
             self.fields["password2"].widget = forms.HiddenInput()
+        else:
+            self.fields["household_name"].required = True
+        for field in self.fields.values():
+            field.help_text = ""
         self._style()
 
     def validate_password_for_user(self, user, password_field_name="password2"):
-        if self.invited:
-            password_field_name = "password1"
-        super().validate_password_for_user(user, password_field_name)
+        super().validate_password_for_user(user, "password1")
 
     def clean(self):
         if self.invited:
             password = self.cleaned_data.get("password1")
             if password:
                 self.cleaned_data["password2"] = password
-        cleaned = super().clean()
-        token = (cleaned.get("invite_token") or "").strip()
-        household_name = (cleaned.get("household_name") or "").strip()
-        if not token and not household_name:
-            self.add_error(
-                "household_name",
-                "Indica un nombre de hogar o usa un enlace de invitación.",
-            )
-        return cleaned
+        return super().clean()
 
 
 class PasswordResetForm(DjangoPasswordResetForm):
