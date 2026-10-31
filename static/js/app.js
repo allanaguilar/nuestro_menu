@@ -51,17 +51,26 @@
       }
       return;
     }
-    const more = event.target.closest(".nav-more-toggle, .tabbar-more-toggle");
-    if (more) {
-      const panel = document.getElementById(more.getAttribute("aria-controls"));
+    const accountBtn = event.target.closest(".account-toggle");
+    if (accountBtn) {
+      const panel = document.getElementById(accountBtn.getAttribute("aria-controls"));
       if (!panel) return;
       const open = panel.hidden;
       panel.hidden = !open;
-      more.setAttribute("aria-expanded", open ? "true" : "false");
+      accountBtn.setAttribute("aria-expanded", open ? "true" : "false");
       return;
     }
-    if (!event.target.closest(".nav-more, .tabbar-more")) {
-      document.querySelectorAll(".nav-more-panel, .tabbar-more-panel").forEach(function (panel) {
+    const accountChoice = event.target.closest(".account-panel a, .account-panel button");
+    if (accountChoice) {
+      window.setTimeout(function () {
+        const panel = accountChoice.closest(".account-panel");
+        if (!panel) return;
+        panel.hidden = true;
+        const toggle = document.querySelector('[aria-controls="' + panel.id + '"]');
+        if (toggle) toggle.setAttribute("aria-expanded", "false");
+      }, 0);
+    } else if (!event.target.closest(".account")) {
+      document.querySelectorAll(".account-panel").forEach(function (panel) {
         if (panel.hidden) return;
         panel.hidden = true;
         const toggle = document.querySelector('[aria-controls="' + panel.id + '"]');
@@ -1093,27 +1102,13 @@
   function showTab(link) {
     const bar = link.closest(".tabbar");
     if (!bar) return;
-    const chosen = link.closest(".tabbar-more-panel")
-      ? bar.querySelector(".tabbar-more-toggle")
-      : link;
     bar.querySelectorAll("[aria-current='page']").forEach(function (item) {
       item.removeAttribute("aria-current");
     });
-    if (chosen) chosen.setAttribute("aria-current", "page");
+    link.setAttribute("aria-current", "page");
     const title = link.getAttribute("data-title");
     const header = document.querySelector(".brand-section");
     if (title && header) header.textContent = title;
-  }
-
-  function closeMoreTab(link) {
-    if (!link.closest(".tabbar-more-panel")) return;
-    const panel = document.getElementById("menu-tab-mas");
-    const bar = link.closest(".tabbar");
-    window.setTimeout(function () {
-      if (panel) panel.hidden = true;
-      const toggle = bar && bar.querySelector(".tabbar-more-toggle");
-      if (toggle) toggle.setAttribute("aria-expanded", "false");
-    }, 0);
   }
 
   function restoreTab() {
@@ -1154,7 +1149,6 @@
     else dropTabPrefetch();
     if (!tabMark) tabMark = rememberTab();
     showTab(link);
-    closeMoreTab(link);
   }, true);
 
   document.addEventListener("htmx:afterSettle", function () {
