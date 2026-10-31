@@ -156,14 +156,8 @@ class CreateInviteView(HouseholdRequiredMixin, View):
         if request.membership.role != request.membership.Role.OWNER:
             messages.error(request, "Solo la persona propietaria puede invitar.")
             return redirect("households:settings")
-        invite = create_invite(request.household, request.user)
-        url = request.build_absolute_uri(
-            reverse("households:accept_invite", args=[invite.token])
-        )
-        messages.success(
-            request,
-            f"Invitación creada. Copia este enlace y envíaselo a la otra persona: {url}",
-        )
+        create_invite(request.household, request.user)
+        messages.success(request, "Invitación creada.")
         return redirect("households:settings")
 
 
