@@ -448,23 +448,29 @@ textarea.recipe-text {
   word-break: break-all;
 }
 .shop-board { width: min(40rem, 100%); margin: 0 auto 1.2rem; }
+.shop-pending,
+.shop-cart {
+  margin-top: 1rem;
+  padding: 0.9rem 1rem 1rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.shop-pending .shop-aisle + .shop-aisle { margin-top: 1rem; }
 .shop-aisle h2 {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  margin: 1rem 0 0.15rem;
+  margin: 0.15rem 0;
   font-size: 1rem;
   color: var(--olive-dark);
 }
 .shop-aisle h2 .icon { flex: 0 0 auto; }
 .shop-cart {
   margin-top: 1.8rem;
-  padding: 0.9rem 1rem 1rem;
   background: var(--bg-accent);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
 }
-.shop-cart h2 { margin-top: 0.15rem; color: var(--muted); }
+.shop-cart h2 { color: var(--muted); }
 .shop-cart .shop-item { border-top-color: var(--line); }
 .shop-list { list-style: none; margin: 0; padding: 0; }
 .shop-item {

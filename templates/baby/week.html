@@ -30,7 +30,7 @@
       <time datetime="{{ item.date|date:'Y-m-d' }}">{{ item.date|date:"j M" }}</time>
     </div>
     <div class="day-rail-body">
-      <form method="post" action="{% url 'baby:set' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
+      <form class="baby-day-form" method="post" action="{% url 'baby:set' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
         {% csrf_token %}
         <section class="baby-slot">
           <label for="id_comida_{{ item.date|date:'Y-m-d' }}">Comida</label>

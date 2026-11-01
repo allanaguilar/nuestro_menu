@@ -114,6 +114,24 @@
       return;
     }
     const button = event.submitter;
+    if (form.classList.contains("baby-day-form")) {
+      document.querySelectorAll("form.baby-day-form").forEach(function (other) {
+        if (other === form) return;
+        other.querySelectorAll("select.baby-food-select").forEach(function (select) {
+          const day = select.dataset.day;
+          const slot = select.dataset.slot;
+          if (!day || !slot) return;
+          const current = select.dataset.current || "";
+          const value = select.value || "";
+          if (value === current) return;
+          const input = document.createElement("input");
+          input.type = "hidden";
+          input.name = "tambien";
+          input.value = day + "|" + slot + "|" + value;
+          form.appendChild(input);
+        });
+      });
+    }
     if (form.classList.contains("day-rail-pick")) {
       document.querySelectorAll("form.day-rail-pick").forEach(function (other) {
         if (other === form) return;
@@ -529,12 +547,14 @@
     const known = {};
     aisles.forEach(function (pair) { known[pair[0]] = true; });
     let html = '<div class="shop-board">';
+    let pendingHtml = "";
     aisles.forEach(function (pair) {
       const group = pending.filter(function (item) { return item.aisle === pair[0]; });
-      if (group.length) html += shopAisleHtml(pair[0], pair[1], group);
+      if (group.length) pendingHtml += shopAisleHtml(pair[0], pair[1], group);
     });
     const stray = pending.filter(function (item) { return !known[item.aisle]; });
-    if (stray.length) html += shopAisleHtml("other", "Otros", stray);
+    if (stray.length) pendingHtml += shopAisleHtml("other", "Otros", stray);
+    if (pendingHtml) html += '<div class="shop-pending">' + pendingHtml + "</div>";
     if (cart.length) {
       html += '<section class="shop-aisle shop-cart" aria-labelledby="en-el-carro">' +
         '<h2 id="en-el-carro"><i class="icon fa-solid fa-cart-shopping" aria-hidden="true"></i><span>En el carro</span></h2>' +

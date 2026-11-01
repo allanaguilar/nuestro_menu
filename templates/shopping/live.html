@@ -1,15 +1,19 @@
 {% if groups or cart %}
 <div class="shop-board">
-  {% for group in groups %}
-  <section class="shop-aisle" aria-labelledby="pasillo-{{ group.key }}">
-    <h2 id="pasillo-{{ group.key }}">{% include "includes/icon.html" with name=group.key %}<span>{{ group.label }}</span></h2>
-    <ul class="shop-list">
-      {% for item in group.items %}
-      {% include "shopping/item.html" %}
-      {% endfor %}
-    </ul>
-  </section>
-  {% endfor %}
+  {% if groups %}
+  <div class="shop-pending">
+    {% for group in groups %}
+    <section class="shop-aisle" aria-labelledby="pasillo-{{ group.key }}">
+      <h2 id="pasillo-{{ group.key }}">{% include "includes/icon.html" with name=group.key %}<span>{{ group.label }}</span></h2>
+      <ul class="shop-list">
+        {% for item in group.items %}
+        {% include "shopping/item.html" %}
+        {% endfor %}
+      </ul>
+    </section>
+    {% endfor %}
+  </div>
+  {% endif %}
 
   {% if cart %}
   <section class="shop-aisle shop-cart" aria-labelledby="en-el-carro">

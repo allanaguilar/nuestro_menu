@@ -29,6 +29,34 @@ def _parse_week(value):
     return monday_of(parsed)
 
 
+def save_companion_baby_days(request, household, week_start, skip_day):
+    saved = set()
+    for raw in request.POST.getlist("tambien"):
+        parts = raw.split("|")
+        if len(parts) != 3:
+            continue
+        day_text, slot, food_id = parts
+        try:
+            day_date = datetime.strptime(day_text, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if day_date == skip_day or slot not in BabyPlanEntry.Slot.values:
+            continue
+        food = None
+        if food_id:
+            food = BabyFood.objects.filter(
+                pk=food_id, household=household, is_active=True
+            ).first()
+            if food is None:
+                continue
+        try:
+            set_baby_meal(household, week_start, day_date, slot, food)
+        except BabyPlanningError:
+            continue
+        saved.add(day_date)
+    return len(saved)
+
+
 def _parse_day(value):
     try:
         return datetime.strptime(value, "%Y-%m-%d").date()
@@ -57,6 +85,31 @@ class BabyWeekView(HouseholdRequiredMixin, TemplateView):
         for day in week_dates(week_start):
             lunch = entry_map.get((day, BabyPlanEntry.Slot.LUNCH))
             snack = entry_map.get((day, BabyPlanEntry.Slot.SNACK))
+            form = BabyDayForm(
+                household=self.request.household,
+                lunch=lunch.food_id if lunch else None,
+                snack=snack.food_id if snack else None,
+                initial={
+                    "comida": lunch.food_id if lunch else None,
+                    "merienda": snack.food_id if snack else None,
+                },
+                auto_id=f"id_%s_{day.isoformat()}",
+            )
+            iso = day.isoformat()
+            form.fields["comida"].widget.attrs.update(
+                {
+                    "data-day": iso,
+                    "data-slot": BabyPlanEntry.Slot.LUNCH,
+                    "data-current": str(lunch.food_id) if lunch else "",
+                }
+            )
+            form.fields["merienda"].widget.attrs.update(
+                {
+                    "data-day": iso,
+                    "data-slot": BabyPlanEntry.Slot.SNACK,
+                    "data-current": str(snack.food_id) if snack else "",
+                }
+            )
             days.append(
                 {
                     "date": day,
@@ -65,16 +118,7 @@ class BabyWeekView(HouseholdRequiredMixin, TemplateView):
                     "is_today": day == today,
                     "lunch": lunch,
                     "snack": snack,
-                    "form": BabyDayForm(
-                        household=self.request.household,
-                        lunch=lunch.food_id if lunch else None,
-                        snack=snack.food_id if snack else None,
-                        initial={
-                            "comida": lunch.food_id if lunch else None,
-                            "merienda": snack.food_id if snack else None,
-                        },
-                        auto_id=f"id_%s_{day.isoformat()}",
-                    ),
+                    "form": form,
                 }
             )
         new_foods = list(new_foods_this_week(plan))
@@ -123,7 +167,11 @@ class SetBabyMealView(HouseholdRequiredMixin, View):
                 BabyPlanEntry.Slot.SNACK,
                 form.cleaned_data["merienda"],
             )
-            messages.success(request, "Día del bebé actualizado.")
+            others = save_companion_baby_days(request, request.household, start, day_date)
+            if others:
+                messages.success(request, "Días del bebé actualizados.")
+            else:
+                messages.success(request, "Día del bebé actualizado.")
         except BabyPlanningError as exc:
             messages.error(request, str(exc))
         return redirect("baby:week", week_start=start.isoformat())
@@ -134,6 +182,7 @@ class SuggestBabyDayView(HouseholdRequiredMixin, View):
         start = _parse_week(week_start)
         day_date = _parse_day(day)
         try:
+            save_companion_baby_days(request, request.household, start, day_date)
             suggest_baby_day(request.household, start, day_date)
             messages.success(request, "Propuesta nueva para ese día.")
         except BabyPlanningError as exc:

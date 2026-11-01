@@ -97,6 +97,32 @@ class BabyMenuTests(TestCase):
         self.assertContains(response, "Hoy el bebé:")
         self.assertContains(response, "Calabacín")
 
+    def test_saving_one_day_keeps_unsaved_choices_on_other_days(self):
+        pear = BabyFood.objects.create(household=self.household, name="Pera")
+        potato = BabyFood.objects.create(household=self.household, name="Patata")
+        tuesday = self.week + timedelta(days=1)
+        wednesday = self.week + timedelta(days=2)
+        response = self.client.post(
+            f"/bebe/{self.week.isoformat()}/dia/{wednesday.isoformat()}/",
+            {
+                "comida": str(pear.pk),
+                "merienda": str(potato.pk),
+                "tambien": [
+                    f"{tuesday.isoformat()}|comida|{pear.pk}",
+                    f"{tuesday.isoformat()}|merienda|{potato.pk}",
+                ],
+            },
+        )
+        self.assertRedirects(response, f"/bebe/{self.week.isoformat()}/")
+        tuesday_slots = dict(
+            BabyPlanEntry.objects.filter(day=tuesday).values_list("slot", "food_id")
+        )
+        wednesday_slots = dict(
+            BabyPlanEntry.objects.filter(day=wednesday).values_list("slot", "food_id")
+        )
+        self.assertEqual(tuesday_slots, {"comida": pear.pk, "merienda": potato.pk})
+        self.assertEqual(wednesday_slots, {"comida": pear.pk, "merienda": potato.pk})
+
     def test_day_card_shows_the_food_only_in_the_select(self):
         food = BabyFood.objects.create(
             household=self.household,
