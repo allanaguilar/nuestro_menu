@@ -3,6 +3,22 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 
+class MenuPreference(models.Model):
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="menu_preference",
+    )
+    show_baby_menu = models.BooleanField("ver menú bebé", default=False)
+
+    class Meta:
+        verbose_name = "preferencia de menú"
+        verbose_name_plural = "preferencias de menú"
+
+    def __str__(self):
+        return f"{self.user} · bebé {'sí' if self.show_baby_menu else 'no'}"
+
+
 class RecipePreference(models.Model):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,

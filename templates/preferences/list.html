@@ -3,6 +3,16 @@
 {% block content %}
 <h1>Preferencias</h1>
 <p class="lede">Puntúa y marca los platos que preferís evitar. El favorito se marca en la receta. Si alguien evita un plato, el generador no lo propone. Los cambios se guardan al momento.</p>
+<section class="panel">
+  <form method="post" class="pref-form">
+    {% csrf_token %}
+    <input type="hidden" name="form" value="baby_menu">
+    <label class="check">
+      <input type="checkbox" name="show_baby_menu"{% if show_baby_menu %} checked{% endif %}>
+      Ver menú bebé
+    </label>
+  </form>
+</section>
 {% if rows %}
 <ul class="preference-list">
   {% for row in rows %}

@@ -41,6 +41,28 @@ class PreferenceTests(TestCase):
         self.assertEqual(pref.rating, 4)
         self.assertFalse(pref.is_avoided)
 
+    def test_baby_menu_stays_hidden_until_the_preference_is_on(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        home = self.client.get("/inicio/")
+        self.assertNotContains(home, 'data-title="Bebé"')
+        self.assertNotContains(home, ">Bebé</span>")
+        prefs = self.client.get("/preferencias/")
+        self.assertContains(prefs, "Ver menú bebé")
+        self.assertNotContains(prefs, 'name="show_baby_menu" checked')
+        turned_on = self.client.post(
+            "/preferencias/",
+            {"form": "baby_menu", "show_baby_menu": "on"},
+            follow=True,
+        )
+        self.assertContains(turned_on, "Menú del bebé visible.")
+        self.assertContains(turned_on, 'name="show_baby_menu" checked')
+        visible = self.client.get("/inicio/")
+        self.assertContains(visible, 'data-title="Bebé"')
+        self.assertContains(visible, ">Bebé</span>")
+        self.client.post("/preferencias/", {"form": "baby_menu"})
+        hidden = self.client.get("/inicio/")
+        self.assertNotContains(hidden, 'data-title="Bebé"')
+
     def test_unique_user_recipe(self):
         RecipePreference.objects.create(user=self.allan, recipe=self.recipe, rating=5)
         with self.assertRaises(Exception):

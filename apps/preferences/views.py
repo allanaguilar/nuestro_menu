@@ -4,7 +4,7 @@ from django.views import View
 
 from apps.core.mixins import HouseholdRequiredMixin
 from apps.preferences.forms import PreferenceForm
-from apps.preferences.models import RecipePreference
+from apps.preferences.models import MenuPreference, RecipePreference
 from apps.preferences.services import upsert_preference
 from apps.recipes.selectors import list_active_recipes
 
@@ -28,6 +28,16 @@ class PreferenceListView(HouseholdRequiredMixin, View):
         return render(request, self.template_name, {"rows": rows})
 
     def post(self, request):
+        if request.POST.get("form") == "baby_menu":
+            MenuPreference.objects.update_or_create(
+                user=request.user,
+                defaults={"show_baby_menu": request.POST.get("show_baby_menu") == "on"},
+            )
+            if request.POST.get("show_baby_menu") == "on":
+                messages.success(request, "Menú del bebé visible.")
+            else:
+                messages.success(request, "Menú del bebé oculto.")
+            return redirect("preferences:list")
         recipe_id = request.POST.get("recipe_id")
         recipes = {str(item.id): item for item in list_active_recipes(request.household)}
         recipe = recipes.get(recipe_id)

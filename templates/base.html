@@ -34,7 +34,7 @@
           <nav id="menu-principal" class="nav" aria-label="Principal">
             <a href="{% url 'core:dashboard' %}">{% include "includes/icon.html" with name="home" %}Inicio</a>
             <a href="{% url 'meal_plans:current' %}">{% include "includes/icon.html" with name="calendar" %}Menú semanal</a>
-            <a href="{% url 'baby:current' %}">{% include "includes/icon.html" with name="baby" %}Bebé</a>
+            {% if show_baby_menu %}<a href="{% url 'baby:current' %}">{% include "includes/icon.html" with name="baby" %}Bebé</a>{% endif %}
             <a href="{% url 'shopping:list' %}">{% include "includes/icon.html" with name="cart" %}Lista de compra</a>
             <a href="{% url 'recipes:list' %}">{% include "includes/icon.html" with name="book" %}Recetario</a>
           </nav>
@@ -76,7 +76,7 @@
       <a href="{% url 'core:dashboard' %}" data-title="Inicio"{% if ns == "core" and name == "dashboard" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="home" %}<span>Inicio</span></a>
       <a href="{% url 'meal_plans:current' %}" data-title="Menú semanal"{% if ns == "meal_plans" and name != "history" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="calendar" %}<span>Menú</span></a>
       <a href="{% url 'shopping:list' %}" data-title="Lista de compra"{% if ns == "shopping" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="cart" %}<span>Lista</span></a>
-      <a href="{% url 'baby:current' %}" data-title="Bebé"{% if ns == "baby" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="baby" %}<span>Bebé</span></a>
+      {% if show_baby_menu %}<a href="{% url 'baby:current' %}" data-title="Bebé"{% if ns == "baby" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="baby" %}<span>Bebé</span></a>{% endif %}
       <a href="{% url 'recipes:list' %}" data-title="Recetario"{% if ns == "recipes" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="book" %}<span>Recetario</span></a>
       {% endwith %}
     </nav>

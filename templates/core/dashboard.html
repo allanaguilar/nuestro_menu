@@ -14,10 +14,12 @@
 </section>
 
 <div class="summary-stack">
+  {% if show_baby_menu %}
   <a class="summary-row" href="{% url 'baby:current' %}">
     <span class="summary-label">{% include "includes/icon.html" with name="baby" %}Bebé</span>
     <span>{% if baby_lunch %}{{ baby_lunch.food.name }}{% else %}sin comida{% endif %}{% if baby_snack %} · merienda {{ baby_snack.food.name }}{% endif %}</span>
   </a>
+  {% endif %}
   <a class="summary-row" href="{% url 'shopping:list' %}">
     <span class="summary-label">{% include "includes/icon.html" with name="cart" %}Lista de compra</span>
     <span>{% if shopping_pending == 1 %}queda 1{% elif shopping_pending %}quedan {{ shopping_pending }}{% else %}nada pendiente{% endif %}</span>
