@@ -1,25 +1,25 @@
 :root {
-  --bg: #f6f1e8;
-  --bg-accent: #efe6d6;
-  --ink: #2b2a26;
-  --muted: #6b675e;
-  --card: #fffaf3;
-  --line: #e2d6c4;
-  --olive: #5c6b4a;
-  --olive-dark: #465338;
+  --bg: #f3f5f7;
+  --bg-accent: #e7f6ef;
+  --ink: #1c2430;
+  --muted: #667085;
+  --card: #ffffff;
+  --line: #e4e7ec;
+  --olive: #12875a;
+  --olive-dark: #0c6b47;
   --terracotta: #c46b4a;
-  --focus: #2f5d50;
-  --ok: #3d6b4f;
+  --focus: #0c6b47;
+  --ok: #0c6b47;
   --err: #9a3b2f;
   --radius: 18px;
-  --shadow: 0 10px 30px rgba(43, 42, 38, 0.08);
+  --shadow: 0 10px 30px rgba(28, 36, 48, 0.08);
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
   font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-  background: radial-gradient(circle at top right, #fbf6ec, var(--bg));
+  background: var(--bg);
   color: var(--ink);
   line-height: 1.5;
   min-height: 100vh;
@@ -31,7 +31,7 @@ a { color: var(--olive-dark); }
 }
 .skip-link:focus { left: 1rem; top: 1rem; background: #fff; padding: 0.5rem 1rem; z-index: 10; }
 .site-header {
-  background: rgba(255, 250, 243, 0.9);
+  background: rgba(255, 255, 255, 0.94);
   border-bottom: 1px solid var(--line);
   position: sticky; top: 0; z-index: 5;
   backdrop-filter: blur(8px);
@@ -263,7 +263,7 @@ label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
 }
 .day-rail.is-today {
   border-color: var(--olive);
-  background: #f8f4ea;
+  background: #e8f7ef;
 }
 .day-rail-when {
   width: 4.6rem;
@@ -348,7 +348,7 @@ textarea.recipe-text {
   resize: none;
   line-height: 1.45;
 }
-.day-rail.is-today .day-rail-when { background: #ece6d4; }
+.day-rail.is-today .day-rail-when { background: #d7f0e4; }
 .day-rail-short {
   margin: 0;
   font-size: 1.05rem;
@@ -682,7 +682,7 @@ form.is-loading { opacity: 0.65; pointer-events: none; }
     right: 0;
     bottom: 0;
     z-index: 6;
-    background: rgba(255, 250, 243, 0.96);
+    background: rgba(255, 255, 255, 0.96);
     border-top: 1px solid var(--line);
     padding: 4px 2px calc(8px + env(safe-area-inset-bottom));
     backdrop-filter: blur(8px);
@@ -710,7 +710,7 @@ form.is-loading { opacity: 0.65; pointer-events: none; }
     cursor: pointer;
   }
   .tabbar [aria-current="page"] {
-    color: #fffaf3;
+    color: #ffffff;
     background: var(--olive);
     font-weight: 700;
   }

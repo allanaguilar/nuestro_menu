@@ -4,7 +4,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <meta name="theme-color" content="#5c6b4a">
+    <meta name="theme-color" content="#12875a">
     <meta name="description" content="Organiza los almuerzos semanales de casa.">
     <title>{% block title %}Nuestro Menú{% endblock %}</title>
     <link rel="manifest" href="{% static 'manifest.webmanifest' %}">
@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/fontawesome.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/solid.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/regular.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=47">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=48">
   </head>
   {% with ns=request.resolver_match.namespace un=request.resolver_match.url_name %}
   <body hx-boost="true"{% if user.is_authenticated and request.household %} data-home="{{ request.household.id }}"{% endif %}>
