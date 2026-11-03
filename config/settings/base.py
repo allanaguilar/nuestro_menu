@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "apps.meal_plans",
     "apps.baby",
     "apps.shopping",
+    "apps.chores",
 ]
 
 MIDDLEWARE = [

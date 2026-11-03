@@ -49,9 +49,11 @@ class LoginRedirectTests(TestCase):
         self.assertContains(dashboard, "Abrir menú")
         self.assertContains(dashboard, 'class="tabbar"')
         self.assertContains(dashboard, 'href="/inicio/" data-title="Inicio" aria-current="page"')
-        self.assertContains(dashboard, 'href="/recetas/" data-title="Recetario"')
+        self.assertContains(dashboard, 'href="/por-hacer/" data-title="Por hacer"')
+        self.assertNotContains(dashboard, 'data-title="Recetario"')
         self.assertContains(dashboard, 'aria-controls="menu-cuenta"')
         self.assertContains(dashboard, "Historial</a>")
+        self.assertContains(dashboard, "Recetario</a>")
         self.assertNotContains(dashboard, ">Más<")
 
 

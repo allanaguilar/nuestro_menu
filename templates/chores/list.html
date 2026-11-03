@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Por hacer · Nuestro Menú{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>Por hacer</h1>
+  <p class="lede">Lo de casa, visible para los dos. Lo marcado queda hecho.</p>
+</div>
+
+<form class="chore-add" method="post">
+  {% csrf_token %}
+  <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+  {{ form.title }}
+  {% if form.title.errors %}
+  <p class="message message-error" role="alert">{{ form.title.errors.0 }}</p>
+  {% endif %}
+  <div class="chore-choices">
+    <div>
+      <label for="{{ form.cadence.id_for_label }}">{{ form.cadence.label }}</label>
+      {{ form.cadence }}
+    </div>
+    <div>
+      <label for="{{ form.assignee.id_for_label }}">{{ form.assignee.label }}</label>
+      {{ form.assignee }}
+    </div>
+  </div>
+  <button class="button" type="submit">Añadir</button>
+</form>
+
+{% if hoy or cuando %}
+<div class="chore-board">
+  {% if hoy %}
+  <section class="chore-card" aria-labelledby="tareas-hoy">
+    <h2 id="tareas-hoy">Hoy</h2>
+    <ul class="chore-list">
+      {% for item in hoy %}
+      {% include "chores/item.html" %}
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  {% if cuando %}
+  <section class="chore-card" aria-labelledby="tareas-cuando">
+    <h2 id="tareas-cuando">Cuando puedas</h2>
+    <ul class="chore-list">
+      {% for item in cuando %}
+      {% include "chores/item.html" %}
+      {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+</div>
+{% else %}
+<p class="lede">Nada por hacer. Escribe lo que haya que hacer.</p>
+{% endif %}
+{% endblock %}

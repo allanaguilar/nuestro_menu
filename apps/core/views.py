@@ -8,6 +8,7 @@ from django.views import View
 from django.views.generic import TemplateView
 
 from apps.baby.selectors import baby_meals_on
+from apps.chores.selectors import open_chores
 from apps.shopping.selectors import pending_count
 from apps.core.mixins import HouseholdRequiredMixin
 from apps.core.week import monday_of, weekday_label, weekday_short
@@ -80,6 +81,7 @@ class DashboardView(HouseholdRequiredMixin, TemplateView):
                 "baby_lunch": baby.get("comida"),
                 "baby_snack": baby.get("merienda"),
                 "shopping_pending": pending_count(self.request.household),
+                "chore_pending": open_chores(self.request.household, today)["pending"],
                 "favorite_ids": {
                     recipe_id for recipe_id, pref in prefs.items() if pref.is_favorite
                 },

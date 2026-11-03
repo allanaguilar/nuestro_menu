@@ -62,4 +62,5 @@ urlpatterns = [
     path("", include("apps.meal_plans.urls")),
     path("", include("apps.baby.urls")),
     path("", include("apps.shopping.urls")),
+    path("", include("apps.chores.urls")),
 ]

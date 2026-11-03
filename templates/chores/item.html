@@ -1,0 +1,13 @@
+<li class="chore-item{% if item.is_done %} is-done{% endif %}">
+  <form method="post" action="{% url 'chores:toggle' item.pk %}">
+    {% csrf_token %}
+    <label class="check">
+      <input type="hidden" name="done" value="0">
+      <input type="checkbox" name="done" value="1"{% if item.is_done %} checked{% endif %} aria-label="{% if item.is_done %}Dejar {{ item.title }} pendiente{% else %}Marcar {{ item.title }} como hecha{% endif %}" onchange="this.form.requestSubmit()">
+      <span class="chore-copy">
+        <span class="chore-title">{{ item.title }}</span>
+        {% if item.meta %}<span class="chore-meta">{{ item.meta }}</span>{% endif %}
+      </span>
+    </label>
+  </form>
+</li>
