@@ -70,6 +70,16 @@ class ChoreTests(TestCase):
         blank = self.client.post("/por-hacer/", {"title": "  ", "cadence": "hoy"})
         self.assertContains(blank, "Escribe la tarea.")
 
+    def test_delete_removes_a_repeating_chore(self):
+        chore = add_chore(self.household, "Regar las plantas", Chore.Cadence.DAILY, None, self.today)
+        page = self.client.get("/por-hacer/")
+        self.assertContains(page, "Borrar Regar las plantas")
+        self.assertContains(page, "¿Deseas borrar «Regar las plantas»?")
+        response = self.client.post(f"/por-hacer/{chore.pk}/borrar/")
+        self.assertRedirects(response, "/por-hacer/")
+        self.assertFalse(Chore.objects.filter(pk=chore.pk).exists())
+        self.assertNotContains(self.client.get("/por-hacer/"), "Regar las plantas")
+
     def test_other_household_cannot_toggle(self):
         other = User.objects.create_user("vecino", password="clave-segura-1")
         house = create_household_for_user(other, "Otra")
@@ -78,3 +88,6 @@ class ChoreTests(TestCase):
         self.assertEqual(response.status_code, 404)
         chore.refresh_from_db()
         self.assertIsNone(chore.done_on)
+        denied = self.client.post(f"/por-hacer/{chore.pk}/borrar/")
+        self.assertEqual(denied.status_code, 404)
+        self.assertTrue(Chore.objects.filter(pk=chore.pk).exists())

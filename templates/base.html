@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/fontawesome.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/solid.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/regular.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=52">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=54">
   </head>
   {% with ns=request.resolver_match.namespace un=request.resolver_match.url_name %}
   <body hx-boost="true"{% if user.is_authenticated and request.household %} data-home="{{ request.household.id }}"{% endif %}>
@@ -83,7 +83,7 @@
     </nav>
     {% endif %}
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
-    <script src="{% static 'js/app.js' %}?v=34" defer></script>
+    <script src="{% static 'js/app.js' %}?v=35" defer></script>
   </body>
   {% endwith %}
 </html>

@@ -536,8 +536,28 @@ textarea.recipe-text {
   color: var(--olive-dark);
 }
 .chore-list { list-style: none; margin: 0; padding: 0; }
-.chore-item { border-top: 1px solid var(--line); }
+.chore-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  border-top: 1px solid var(--line);
+}
+.chore-ask {
+  flex: 1 0 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  padding: 0.15rem 0 0.75rem;
+}
+.chore-ask[hidden] { display: none; }
+.chore-ask p { margin: 0; }
+.chore-ask form { display: flex; gap: 0.45rem; margin: 0; }
+.chore-ask .button { width: auto; min-height: 40px; padding: 0.35rem 0.9rem; }
 .chore-item form { margin: 0; }
+.chore-item form:first-child { flex: 1; min-width: 0; }
 .chore-item .check { margin: 0; width: 100%; min-width: 0; align-items: center; min-height: 52px; }
 .chore-copy { display: flex; flex-direction: column; min-width: 0; }
 .chore-meta { color: var(--muted); font-size: 0.86rem; line-height: 1.2; }

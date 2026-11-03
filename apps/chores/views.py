@@ -53,3 +53,10 @@ class ToggleChoreView(HouseholdRequiredMixin, View):
         chore = get_owned_or_404(Chore.objects.filter(household=request.household), pk=pk)
         set_chore_done(chore, timezone.localdate(), request.POST.get("done") == "1")
         return redirect("chores:list")
+
+
+class DeleteChoreView(HouseholdRequiredMixin, View):
+    def post(self, request, pk):
+        chore = get_owned_or_404(Chore.objects.filter(household=request.household), pk=pk)
+        chore.delete()
+        return redirect("chores:list")

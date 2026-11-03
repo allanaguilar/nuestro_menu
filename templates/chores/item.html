@@ -10,4 +10,15 @@
       </span>
     </label>
   </form>
+  <button type="button" class="icon-btn chore-ask-open" aria-expanded="false" aria-controls="borrar-{{ item.pk }}" aria-label="Borrar {{ item.title }}">
+    {% include "includes/icon.html" with name="trash" %}
+  </button>
+  <div class="chore-ask" id="borrar-{{ item.pk }}" hidden>
+    <p>¿Deseas borrar «{{ item.title }}»?</p>
+    <form method="post" action="{% url 'chores:delete' item.pk %}">
+      {% csrf_token %}
+      <button class="button" type="submit">Borrar</button>
+      <button class="button button-ghost chore-ask-cancel" type="button">Cancelar</button>
+    </form>
+  </div>
 </li>

@@ -60,6 +60,30 @@
       accountBtn.setAttribute("aria-expanded", open ? "true" : "false");
       return;
     }
+    const askOpen = event.target.closest(".chore-ask-open");
+    if (askOpen) {
+      const item = askOpen.closest(".chore-item");
+      const ask = item && item.querySelector(".chore-ask");
+      if (!ask) return;
+      const show = ask.hidden;
+      document.querySelectorAll(".chore-ask").forEach(function (other) {
+        other.hidden = true;
+        const button = other.parentElement.querySelector(".chore-ask-open");
+        if (button) button.setAttribute("aria-expanded", "false");
+      });
+      ask.hidden = !show;
+      askOpen.setAttribute("aria-expanded", show ? "true" : "false");
+      return;
+    }
+    const askCancel = event.target.closest(".chore-ask-cancel");
+    if (askCancel) {
+      const ask = askCancel.closest(".chore-ask");
+      if (!ask) return;
+      ask.hidden = true;
+      const button = ask.parentElement.querySelector(".chore-ask-open");
+      if (button) button.setAttribute("aria-expanded", "false");
+      return;
+    }
     const accountChoice = event.target.closest(".account-panel a, .account-panel button");
     if (accountChoice) {
       window.setTimeout(function () {
