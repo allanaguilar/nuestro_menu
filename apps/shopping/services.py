@@ -1,6 +1,7 @@
 from django.db import IntegrityError
+from django.utils import timezone
 
-from apps.shopping.models import ShoppingItem, normalize_item_name
+from apps.shopping.models import Purchase, ShoppingItem, normalize_item_name
 
 
 class ShoppingError(Exception):
@@ -26,5 +27,19 @@ def add_shopping_item(household, name, user=None):
 
 
 def clear_bought(household):
-    deleted, _detail = ShoppingItem.objects.filter(household=household, done=True).delete()
+    bought = list(ShoppingItem.objects.filter(household=household, done=True))
+    if bought:
+        today = timezone.localdate()
+        Purchase.objects.bulk_create(
+            [
+                Purchase(
+                    household=household,
+                    name=item.name,
+                    normalized_name=item.normalized_name,
+                    bought_on=today,
+                )
+                for item in bought
+            ]
+        )
+    deleted, _detail = ShoppingItem.objects.filter(pk__in=[item.pk for item in bought]).delete()
     return deleted

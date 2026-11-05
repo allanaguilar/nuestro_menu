@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 
+from django.db.models.deletion import ProtectedError
+
 from apps.recipes.models import Recipe
 from apps.recipes.utils import normalize_recipe_name
 
@@ -112,3 +114,18 @@ def reactivate_recipe(recipe: Recipe):
     recipe.is_active = True
     recipe.save(update_fields=["is_active", "updated_at"])
     return recipe
+
+
+class RecipeDeleteError(Exception):
+    pass
+
+
+def delete_archived_recipe(recipe: Recipe):
+    if recipe.is_active:
+        raise RecipeDeleteError("Archiva la receta antes de borrarla.")
+    try:
+        recipe.delete()
+    except ProtectedError as exc:
+        raise RecipeDeleteError(
+            f"«{recipe.name}» está en el menú o el historial, así que se queda archivada."
+        ) from exc

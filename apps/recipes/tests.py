@@ -1,7 +1,10 @@
+from datetime import date
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 
 from apps.households.services import create_household_for_user
+from apps.meal_plans.models import MealPlan, MealPlanEntry
 from apps.recipes.models import Recipe
 from apps.recipes.services import guess_recipe_category, import_recipes_from_text
 from apps.recipes.utils import normalize_recipe_name
@@ -20,6 +23,22 @@ class RecipeTests(TestCase):
             household=self.other_home, name="Secreto", category=Recipe.Category.OTROS
         )
 
+    def test_share_text_includes_the_recipe(self):
+        self.recipe.prep_time_minutes = 40
+        self.recipe.ingredients = "200 g de lentejas\n1 cebolla"
+        self.recipe.steps = "Cocer las lentejas."
+        self.recipe.save()
+        text = self.recipe.share_text()
+        self.assertIn("Lentejas", text)
+        self.assertIn("Legumbres · 40 min", text)
+        self.assertIn("- 200 g de lentejas", text)
+        self.assertIn("Cocer las lentejas.", text)
+        self.client.login(username="allan", password="clave-segura-1")
+        page = self.client.get("/recetas/")
+        self.assertContains(page, "Compartir Lentejas")
+        self.assertContains(page, "200 g de lentejas")
+        self.assertContains(page, "Cocer las lentejas.")
+
     def test_normalized_name(self):
         self.assertEqual(normalize_recipe_name("  Lentejas   Estofadas "), "lentejas estofadas")
         recipe = Recipe.objects.create(
@@ -36,6 +55,7 @@ class RecipeTests(TestCase):
         response = self.client.get("/recetas/")
         self.assertContains(response, "Lentejas")
         self.assertContains(response, "Vista previa de Lentejas")
+        self.assertContains(response, "Compartir Lentejas")
         self.assertContains(response, "Ver archivadas")
         self.assertContains(response, "button-ghost")
         self.assertContains(response, 'aria-pressed="false"')
@@ -59,6 +79,43 @@ class RecipeTests(TestCase):
         active = self.client.get("/recetas/")
         self.assertContains(active, "Vista previa de Lentejas")
         self.assertNotContains(active, "Sopa vieja")
+        self.assertContains(archived, "Borrar Sopa vieja")
+        self.assertContains(archived, "¿Deseas borrar «Sopa vieja»?")
+        self.assertNotContains(active, "Borrar Lentejas")
+
+    def test_delete_archived_recipe(self):
+        old = Recipe.objects.create(
+            household=self.household,
+            name="Sopa vieja",
+            category=Recipe.Category.OTROS,
+            is_active=False,
+        )
+        self.client.login(username="allan", password="clave-segura-1")
+        response = self.client.post(f"/recetas/{old.id}/borrar/", {"next": "/recetas/?archivo=1"})
+        self.assertRedirects(response, "/recetas/?archivo=1")
+        self.assertFalse(Recipe.objects.filter(pk=old.pk).exists())
+
+    def test_active_recipe_is_not_deleted(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        response = self.client.post(f"/recetas/{self.recipe.id}/borrar/")
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(Recipe.objects.filter(pk=self.recipe.pk, is_active=True).exists())
+
+    def test_archived_recipe_used_in_a_menu_stays(self):
+        old = Recipe.objects.create(
+            household=self.household,
+            name="Sopa vieja",
+            category=Recipe.Category.OTROS,
+            is_active=False,
+        )
+        plan = MealPlan.objects.create(
+            household=self.household, week_start=date(2026, 11, 2), created_by=self.user
+        )
+        MealPlanEntry.objects.create(meal_plan=plan, day=date(2026, 11, 2), recipe=old)
+        self.client.login(username="allan", password="clave-segura-1")
+        response = self.client.post(f"/recetas/{old.id}/borrar/", follow=True)
+        self.assertContains(response, "se queda archivada")
+        self.assertTrue(Recipe.objects.filter(pk=old.pk).exists())
 
     def test_cannot_edit_foreign_recipe(self):
         self.client.login(username="allan", password="clave-segura-1")

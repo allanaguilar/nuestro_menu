@@ -3,6 +3,7 @@ from django.urls import path
 from apps.recipes.views import (
     RecipeArchiveView,
     RecipeCreateView,
+    RecipeDeleteView,
     RecipeFavoriteView,
     RecipeImportView,
     RecipeListView,
@@ -17,5 +18,6 @@ urlpatterns = [
     path("recetas/importar/", RecipeImportView.as_view(), name="import"),
     path("recetas/<uuid:pk>/editar/", RecipeUpdateView.as_view(), name="update"),
     path("recetas/<uuid:pk>/archivo/", RecipeArchiveView.as_view(), name="archive"),
+    path("recetas/<uuid:pk>/borrar/", RecipeDeleteView.as_view(), name="delete"),
     path("recetas/<uuid:pk>/favorita/", RecipeFavoriteView.as_view(), name="favorite"),
 ]

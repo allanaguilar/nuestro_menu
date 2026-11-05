@@ -22,6 +22,7 @@
 </form>
 
 {% if recipes %}
+<p class="sr-only" id="recipe-share-status" aria-live="polite"></p>
 <ul class="recipe-list">
   {% for recipe in recipes %}
   <li class="panel recipe-item">
@@ -30,6 +31,10 @@
       <p class="tag">{{ recipe.get_category_display }}{% if recipe.prep_time_minutes %} · {{ recipe.prep_time_minutes }} min{% endif %}{% if not recipe.is_meal %} · apunte{% endif %}{% if not recipe.is_active %} · archivada{% endif %}</p>
     </div>
     <div class="icon-row">
+      <button type="button" class="icon-btn recipe-share" data-title="{{ recipe.name }}" data-text="{{ recipe.share_text }}" aria-label="Compartir {{ recipe.name }}">
+        {% include "includes/icon.html" with name="share" %}
+        <span class="sr-only">Compartir</span>
+      </button>
       <button type="button" class="icon-btn recipe-preview" aria-expanded="false" aria-controls="vista-{{ recipe.pk }}" aria-label="Vista previa de {{ recipe.name }}">
         {% include "includes/icon.html" with name="eye" %}
         <span class="sr-only">Vista previa</span>
@@ -60,7 +65,23 @@
           <span class="sr-only">{% if recipe.is_active %}Archivar{% else %}Reactivar{% endif %}</span>
         </button>
       </form>
+      {% if not recipe.is_active %}
+      <button type="button" class="icon-btn chore-ask-open" aria-expanded="false" aria-controls="borrar-{{ recipe.pk }}" aria-label="Borrar {{ recipe.name }}">
+        {% include "includes/icon.html" with name="trash" %}
+      </button>
+      {% endif %}
     </div>
+    {% if not recipe.is_active %}
+    <div class="chore-ask" id="borrar-{{ recipe.pk }}" hidden>
+      <p>¿Deseas borrar «{{ recipe.name }}»?</p>
+      <form method="post" action="{% url 'recipes:delete' recipe.pk %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'recipes:list' %}?archivo=1{% if query %}&amp;q={{ query|urlencode }}{% endif %}">
+        <button class="button" type="submit">Borrar</button>
+        <button class="button button-ghost chore-ask-cancel" type="button">Cancelar</button>
+      </form>
+    </div>
+    {% endif %}
     <section id="vista-{{ recipe.pk }}" class="day-recipe" hidden>
       {% include "includes/recipe_body.html" with recipe=recipe %}
     </section>

@@ -102,3 +102,23 @@ class ShoppingPushSubscription(models.Model):
     p256dh = models.CharField(max_length=255)
     auth = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
+
+
+class Purchase(models.Model):
+    household = models.ForeignKey(
+        "households.Household", on_delete=models.CASCADE, related_name="purchases"
+    )
+    name = models.CharField(max_length=120)
+    normalized_name = models.CharField(max_length=120)
+    bought_on = models.DateField()
+
+    class Meta:
+        verbose_name = "compra"
+        verbose_name_plural = "compras"
+        ordering = ["-bought_on", "name"]
+        indexes = [
+            models.Index(fields=["household", "bought_on"]),
+        ]
+
+    def __str__(self):
+        return self.name

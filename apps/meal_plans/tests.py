@@ -251,6 +251,22 @@ class MealPlanTests(TestCase):
         home = self.client.get("/inicio/")
         self.assertContains(home, "day-open")
         self.assertContains(home, "600 g de carne")
-        self.assertContains(home, "Cambiar el plato de este día")
-        self.assertContains(home, "Marcar favorita")
+        self.assertContains(home, 'class="sr-only"')
+        self.assertContains(home, "Plato del")
+        self.assertContains(home, 'class="home-day-choice"')
+        self.assertNotContains(home, "<h3>")
+        self.assertNotContains(home, "Marcar favorita")
+        self.assertNotContains(home, "/editar/")
         self.assertNotContains(home, "Editar en el recetario")
+        other = (
+            Recipe.objects.filter(household=self.household, is_active=True, is_meal=True)
+            .exclude(pk=recipe.pk)
+            .first()
+        )
+        changed = self.client.post(
+            f"/menu/{self.week.isoformat()}/dia/{entry.day.isoformat()}/cambiar/",
+            {"recipe": str(other.pk), "next": "/inicio/"},
+        )
+        self.assertRedirects(changed, "/inicio/")
+        entry.refresh_from_db()
+        self.assertEqual(entry.recipe_id, other.pk)

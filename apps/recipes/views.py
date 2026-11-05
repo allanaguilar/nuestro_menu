@@ -9,7 +9,13 @@ from apps.preferences.selectors import preference_map
 from apps.preferences.services import toggle_favorite
 from apps.recipes.forms import RecipeForm, RecipeImportForm
 from apps.recipes.selectors import recipes_for_household, search_recipes
-from apps.recipes.services import archive_recipe, import_recipes_from_text, reactivate_recipe
+from apps.recipes.services import (
+    RecipeDeleteError,
+    archive_recipe,
+    delete_archived_recipe,
+    import_recipes_from_text,
+    reactivate_recipe,
+)
 
 
 class RecipeListView(HouseholdRequiredMixin, ListView):
@@ -112,6 +118,20 @@ class RecipeArchiveView(HouseholdRequiredMixin, View):
             reactivate_recipe(recipe)
             messages.success(request, f"«{recipe.name}» está de nuevo activa.")
         return redirect(request.POST.get("next") or reverse("recipes:list"))
+
+
+class RecipeDeleteView(HouseholdRequiredMixin, View):
+    def post(self, request, pk):
+        recipe = get_owned_or_404(recipes_for_household(request.household), pk=pk)
+        archived = reverse("recipes:list") + "?archivo=1"
+        try:
+            name = recipe.name
+            delete_archived_recipe(recipe)
+        except RecipeDeleteError as exc:
+            messages.error(request, str(exc))
+            return redirect(request.POST.get("next") or archived)
+        messages.success(request, f"«{name}» se ha eliminado.")
+        return redirect(request.POST.get("next") or archived)
 
 
 class RecipeFavoriteView(HouseholdRequiredMixin, View):

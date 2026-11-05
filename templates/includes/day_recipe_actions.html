@@ -1,8 +1,10 @@
 <div class="icon-row day-recipe-actions">
+  {% if not hide_recipe_edit %}
   <a class="icon-btn" href="{% url 'recipes:update' recipe.pk %}" aria-label="Editar {{ recipe.name }}">
     {% include "includes/icon.html" with name="pencil" %}
     <span class="sr-only">Editar</span>
   </a>
+  {% endif %}
   {% if show_calendar %}
   <a class="icon-btn" href="{% url 'meal_plans:week' week_start=week_start|date:'Y-m-d' %}" aria-label="Cambiar el plato de este día">
     {% include "includes/icon.html" with name="calendar" %}

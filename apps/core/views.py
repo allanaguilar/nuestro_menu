@@ -11,8 +11,10 @@ from apps.baby.selectors import baby_meals_on
 from apps.chores.selectors import open_chores
 from apps.shopping.selectors import pending_count
 from apps.core.mixins import HouseholdRequiredMixin
+from apps.core.summary import summary_for
 from apps.core.week import monday_of, weekday_label, weekday_short
 from apps.households.selectors import get_user_membership
+from apps.meal_plans.forms import ChangeDishForm
 from apps.meal_plans.selectors import get_plan_for_week
 from apps.preferences.selectors import preference_map
 from apps.recipes.selectors import list_active_recipes, recipe_count
@@ -56,6 +58,15 @@ class DashboardView(HouseholdRequiredMixin, TemplateView):
 
             current = week_start + timedelta(days=day)
             entry = entry_map.get(current)
+            form = None
+            if entry:
+                form = ChangeDishForm(
+                    household=self.request.household,
+                    current=entry.recipe_id,
+                    auto_id=f"id_%s_{current.isoformat()}",
+                )
+                form.fields["recipe"].widget.attrs["data-day"] = current.isoformat()
+                form.fields["recipe"].widget.attrs["data-current"] = str(entry.recipe_id)
             entries.append(
                 {
                     "date": current,
@@ -63,6 +74,7 @@ class DashboardView(HouseholdRequiredMixin, TemplateView):
                     "short": weekday_short(current),
                     "is_today": current == today,
                     "entry": entry,
+                    "form": form,
                 }
             )
         baby = baby_meals_on(self.request.household, today)
@@ -105,3 +117,12 @@ class ServiceWorkerView(View):
 
 class InstallView(HouseholdRequiredMixin, TemplateView):
     template_name = "core/install.html"
+
+
+class SummaryView(HouseholdRequiredMixin, TemplateView):
+    template_name = "core/summary.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context.update(summary_for(self.request.household))
+        return context

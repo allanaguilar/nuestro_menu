@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/fontawesome.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/solid.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/regular.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=54">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=57">
   </head>
   {% with ns=request.resolver_match.namespace un=request.resolver_match.url_name %}
   <body hx-boost="true"{% if user.is_authenticated and request.household %} data-home="{{ request.household.id }}"{% endif %}>
@@ -23,7 +23,7 @@
         <a class="brand" href="{% url 'core:dashboard' %}">
           <span class="brand-name">Nuestro Menú</span>
           {% if user.is_authenticated %}
-          <span class="brand-section">{% if ns == "shopping" %}Lista de compra{% elif ns == "chores" %}Por hacer{% elif ns == "meal_plans" and un == "history" %}Historial de menús{% elif ns == "meal_plans" %}Menú semanal{% elif ns == "baby" and un == "foods" %}Alimentos del bebé{% elif ns == "baby" and un == "edit" %}Editar alimento{% elif ns == "baby" %}Bebé{% elif ns == "recipes" and un == "import" %}Importar recetas{% elif ns == "recipes" and un == "create" %}Nueva receta{% elif ns == "recipes" and un == "update" %}Editar receta{% elif ns == "recipes" %}Recetario{% elif ns == "preferences" %}Preferencias{% elif ns == "households" %}Ajustes del hogar{% elif un == "install" %}Instalar Nuestro Menú{% else %}Inicio{% endif %}</span>
+          <span class="brand-section">{% if ns == "shopping" %}Lista de compra{% elif ns == "chores" %}Por hacer{% elif ns == "meal_plans" and un == "history" %}Historial de menús{% elif ns == "meal_plans" %}Menú semanal{% elif ns == "baby" and un == "foods" %}Alimentos del bebé{% elif ns == "baby" and un == "edit" %}Editar alimento{% elif ns == "baby" %}Bebé{% elif ns == "recipes" and un == "import" %}Importar recetas{% elif ns == "recipes" and un == "create" %}Nueva receta{% elif ns == "recipes" and un == "update" %}Editar receta{% elif ns == "recipes" %}Recetario{% elif ns == "preferences" %}Preferencias{% elif ns == "households" %}Ajustes del hogar{% elif ns == "core" and un == "summary" %}Resumen{% elif un == "install" %}Instalar Nuestro Menú{% else %}Inicio{% endif %}</span>
           {% endif %}
         </a>
         {% if user.is_authenticated %}
@@ -47,6 +47,7 @@
               <p class="account-who">{{ who }}</p>
               <a href="{% url 'preferences:list' %}"{% if ns == "preferences" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="sliders" %}Preferencias</a>
               <a href="{% url 'meal_plans:history' %}"{% if ns == "meal_plans" and un == "history" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="clock" %}Historial</a>
+              <a href="{% url 'core:summary' %}"{% if ns == "core" and un == "summary" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="chart" %}Resumen</a>
               <a href="{% url 'recipes:list' %}"{% if ns == "recipes" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="book" %}Recetario</a>
               <a href="{% url 'households:settings' %}"{% if ns == "households" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="household" %}Hogar</a>
               <a href="{% url 'core:install' %}"{% if un == "install" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="download" %}Instalar</a>
@@ -83,7 +84,7 @@
     </nav>
     {% endif %}
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
-    <script src="{% static 'js/app.js' %}?v=35" defer></script>
+    <script src="{% static 'js/app.js' %}?v=38" defer></script>
   </body>
   {% endwith %}
 </html>

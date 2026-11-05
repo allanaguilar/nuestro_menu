@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
@@ -25,6 +26,12 @@ from apps.meal_plans.services.planning import (
 )
 from apps.preferences.selectors import preference_map
 from apps.recipes.models import Recipe
+
+
+def _return_to(request, week_start):
+    if request.POST.get("next") == reverse("core:dashboard"):
+        return redirect("core:dashboard")
+    return redirect("meal_plans:week", week_start=week_start.isoformat())
 
 
 def _parse_week(value):
@@ -147,7 +154,7 @@ class ChangeDishView(HouseholdRequiredMixin, View):
         form = ChangeDishForm(request.POST, household=request.household)
         if not form.is_valid():
             messages.error(request, "Elige un plato válido.")
-            return redirect("meal_plans:week", week_start=start.isoformat())
+            return _return_to(request, start)
         try:
             change_entry(request.household, start, day_date, form.cleaned_data["recipe"])
             others = save_companion_days(request, request.household, start, day_date)
@@ -157,9 +164,7 @@ class ChangeDishView(HouseholdRequiredMixin, View):
                 messages.success(request, "Plato actualizado.")
         except PlanningError as exc:
             messages.error(request, str(exc))
-        if request.headers.get("HX-Request"):
-            return redirect("meal_plans:week", week_start=start.isoformat())
-        return redirect("meal_plans:week", week_start=start.isoformat())
+        return _return_to(request, start)
 
 
 class AlternativeDishView(HouseholdRequiredMixin, View):

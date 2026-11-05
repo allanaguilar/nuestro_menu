@@ -57,10 +57,20 @@
       <span class="day-chevron" aria-hidden="true">{% include "includes/icon.html" with name="chevron" %}</span>
     </button>
     <section id="receta-{{ item.date|date:'Y-m-d' }}" class="day-recipe" hidden>
-      <h3>{{ item.entry.recipe.name }}</h3>
+      <form class="day-rail-pick" method="post" action="{% url 'meal_plans:change' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{% url 'core:dashboard' %}">
+        <div class="home-day-choice">
+          <label class="sr-only" for="{{ item.form.recipe.id_for_label }}">Plato del {{ item.label }}</label>
+          {{ item.form.recipe }}
+          <button class="icon-btn" type="submit" aria-label="Guardar el plato del {{ item.label }}">
+            {% include "includes/icon.html" with name="save" %}
+            <span class="sr-only">Guardar</span>
+          </button>
+        </div>
+      </form>
       <p class="day-recipe-meta">{{ item.entry.recipe.get_category_display }}{% if item.entry.recipe.prep_time_minutes %} · {{ item.entry.recipe.prep_time_minutes }} min{% endif %}</p>
       {% include "includes/recipe_body.html" with recipe=item.entry.recipe %}
-      {% include "includes/day_recipe_actions.html" with recipe=item.entry.recipe show_calendar=True week_start=week_start %}
     </section>
     {% else %}
     <div class="day-rail-when">

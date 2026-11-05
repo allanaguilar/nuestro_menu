@@ -75,6 +75,21 @@ class Recipe(models.Model):
     def step_lines(self):
         return self.text_lines(self.steps)
 
+    def share_text(self):
+        lines = [self.name]
+        meta = self.get_category_display()
+        if self.prep_time_minutes:
+            meta = f"{meta} · {self.prep_time_minutes} min"
+        lines.append(meta)
+        if self.ingredient_lines:
+            lines.extend(["", "Ingredientes", *[f"- {line}" for line in self.ingredient_lines]])
+        if self.step_lines:
+            lines.extend(["", "Pasos", *self.step_lines])
+        notes = (self.notes or "").strip()
+        if notes:
+            lines.extend(["", "Notas", notes])
+        return "\n".join(lines)
+
     def save(self, *args, **kwargs):
         self.normalized_name = normalize_recipe_name(self.name)
         super().save(*args, **kwargs)

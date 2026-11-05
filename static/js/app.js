@@ -16,6 +16,55 @@
       }
       return;
     }
+    const share = event.target.closest(".recipe-share");
+    if (share) {
+      const text = share.getAttribute("data-text") || "";
+      if (!text) return;
+      const title = share.getAttribute("data-title") || "Receta";
+      const status = document.getElementById("recipe-share-status");
+      const copied = function () {
+        if (status) status.textContent = "Receta copiada. Pégala en WhatsApp u otra app.";
+      };
+      const openWhatsapp = function () {
+        const url = "https://wa.me/?text=" + encodeURIComponent(text);
+        const opened = window.open(url, "_blank", "noopener");
+        if (!opened && status) status.textContent = "No se pudo abrir WhatsApp. Copia la receta a mano.";
+      };
+      const fallbackCopy = function () {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.setAttribute("readonly", "");
+        area.style.position = "fixed";
+        area.style.left = "-9999px";
+        document.body.appendChild(area);
+        area.select();
+        let ok = false;
+        try {
+          ok = document.execCommand("copy");
+        } catch (err) {
+          ok = false;
+        }
+        area.remove();
+        if (ok) copied();
+        else openWhatsapp();
+      };
+      const copyText = function () {
+        if (navigator.clipboard && window.isSecureContext) {
+          navigator.clipboard.writeText(text).then(copied).catch(fallbackCopy);
+          return;
+        }
+        fallbackCopy();
+      };
+      if (navigator.share) {
+        navigator.share({ title: title, text: text }).catch(function (err) {
+          if (err && err.name === "AbortError") return;
+          copyText();
+        });
+        return;
+      }
+      copyText();
+      return;
+    }
     const copy = event.target.closest(".copy-invite");
     if (copy) {
       const code = document.getElementById("invite-url");
@@ -62,7 +111,7 @@
     }
     const askOpen = event.target.closest(".chore-ask-open");
     if (askOpen) {
-      const item = askOpen.closest(".chore-item");
+      const item = askOpen.closest(".chore-item, .recipe-item");
       const ask = item && item.querySelector(".chore-ask");
       if (!ask) return;
       const show = ask.hidden;

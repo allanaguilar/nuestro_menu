@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Resumen{% endblock %}
+{% block content %}
+<h1>Resumen</h1>
+<p class="lede">Últimas 4 semanas. Las comidas salen de los menús aprobados. Las compras, de lo que vacías del carro.</p>
+<div class="summary-list">
+  <section class="panel summary-card" aria-labelledby="comidas">
+    <h2 id="comidas">Comidas</h2>
+    {% if meals %}
+    <ul class="summary-bars">
+      {% for row in meals %}
+      <li>
+        <span class="summary-name">{{ row.name }}</span>
+        <span class="summary-track" aria-hidden="true"><span class="summary-fill" style="width: {{ row.percent }}%"></span></span>
+        <span class="summary-count">{{ row.count }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>Aprueba un menú y las comidas de estas 4 semanas saldrán aquí.</p>
+    {% endif %}
+  </section>
+  <section class="panel summary-card summary-buy" aria-labelledby="compras">
+    <h2 id="compras">Compras</h2>
+    {% if purchases %}
+    <ul class="summary-bars">
+      {% for row in purchases %}
+      <li>
+        <span class="summary-name">{{ row.name }}</span>
+        <span class="summary-track" aria-hidden="true"><span class="summary-fill" style="width: {{ row.percent }}%"></span></span>
+        <span class="summary-count">{{ row.count }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p>Cuando vacíes el carro, los productos comprados saldrán aquí.</p>
+    {% endif %}
+  </section>
+</div>
+{% endblock %}

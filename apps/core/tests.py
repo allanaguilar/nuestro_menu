@@ -11,6 +11,10 @@ from django.test import TestCase, override_settings
 from apps.core.mail import EmailDeliveryError
 from apps.core.week import weekday_short
 from apps.households.services import create_household_for_user
+from apps.meal_plans.models import MealPlan, MealPlanEntry
+from apps.recipes.models import Recipe
+from apps.shopping.models import Purchase, ShoppingItem
+from apps.shopping.services import clear_bought
 
 
 class HealthTests(TestCase):
@@ -53,6 +57,8 @@ class LoginRedirectTests(TestCase):
         self.assertNotContains(dashboard, 'data-title="Recetario"')
         self.assertContains(dashboard, 'aria-controls="menu-cuenta"')
         self.assertContains(dashboard, "Historial</a>")
+        self.assertContains(dashboard, "Resumen</a>")
+        self.assertContains(dashboard, "fa-chart-column")
         self.assertContains(dashboard, "Recetario</a>")
         self.assertNotContains(dashboard, ">Más<")
 
@@ -104,6 +110,56 @@ class BrevoBackendTests(TestCase):
         with patch("apps.core.mail.urlopen", side_effect=error):
             with self.assertRaises(EmailDeliveryError):
                 send_mail("Asunto", "Cuerpo", None, ["destino@example.com"])
+
+
+class SummaryTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user("allan", password="clave-segura-1")
+        self.other = User.objects.create_user("vecino", password="clave-segura-1")
+        self.household = create_household_for_user(self.user, "Casa")
+        self.other_home = create_household_for_user(self.other, "Otra")
+        self.recipe = Recipe.objects.create(
+            household=self.household, name="Lentejas", category=Recipe.Category.LEGUMBRES
+        )
+        self.client.login(username="allan", password="clave-segura-1")
+
+    def test_approved_meals_and_cleared_cart_show_on_the_summary(self):
+        plan = MealPlan.objects.create(
+            household=self.household,
+            week_start=date(2026, 11, 2),
+            status=MealPlan.Status.APPROVED,
+            created_by=self.user,
+        )
+        MealPlanEntry.objects.create(meal_plan=plan, day=date(2026, 11, 2), recipe=self.recipe)
+        MealPlanEntry.objects.create(meal_plan=plan, day=date(2026, 11, 3), recipe=self.recipe)
+        draft = MealPlan.objects.create(
+            household=self.household,
+            week_start=date(2026, 10, 26),
+            created_by=self.user,
+        )
+        MealPlanEntry.objects.create(meal_plan=draft, day=date(2026, 10, 26), recipe=self.recipe)
+        item = ShoppingItem.objects.create(household=self.household, name="Leche", added_by=self.user)
+        item.done = True
+        item.save(update_fields=["done"])
+        with patch("apps.shopping.services.timezone.localdate", return_value=date(2026, 11, 5)):
+            clear_bought(self.household)
+        Purchase.objects.create(
+            household=self.other_home, name="Secreto", normalized_name="secreto", bought_on=date(2026, 11, 5)
+        )
+        with patch("apps.core.summary.timezone.localdate", return_value=date(2026, 11, 5)):
+            page = self.client.get("/resumen/")
+        self.assertContains(page, "Comidas")
+        self.assertContains(page, "Lentejas")
+        self.assertContains(page, 'summary-count">2<')
+        self.assertContains(page, "Leche")
+        self.assertNotContains(page, "Secreto")
+        self.assertContains(page, "fa-chart-column")
+        self.assertContains(page, 'aria-current="page"')
+
+    def test_summary_requires_login(self):
+        self.client.logout()
+        response = self.client.get("/resumen/")
+        self.assertEqual(response.status_code, 302)
 
 
 class WeekdayShortTests(TestCase):
