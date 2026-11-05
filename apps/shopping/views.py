@@ -9,7 +9,7 @@ from django.views.generic import TemplateView
 
 from apps.core.mixins import HouseholdRequiredMixin, get_owned_or_404
 from apps.shopping.forms import AddShoppingItemForm
-from apps.shopping.models import ShoppingItem, ShoppingPushSubscription, normalize_item_name
+from apps.shopping.models import ShoppingItem, ShoppingPushSubscription, product_key
 from apps.shopping.push import added_notice, cleared_notice, notify_others
 from apps.shopping.selectors import shopping_page, touch_presence
 from apps.shopping.services import ShoppingError, add_shopping_item, clear_bought
@@ -51,7 +51,7 @@ def shop_form_error(form):
 def shop_add_conflict(request, form, message):
     matched = ShoppingItem.objects.filter(
         household=request.household,
-        normalized_name=normalize_item_name(form.cleaned_data.get("name") or ""),
+        normalized_name=product_key(form.cleaned_data.get("name") or ""),
     ).first()
     extra = {"error": message}
     if matched:

@@ -46,6 +46,13 @@ class ShoppingListTests(TestCase):
         self.assertContains(response, "Ya está en la lista.")
         self.assertEqual(ShoppingItem.objects.filter(household=self.household).count(), 1)
 
+    def test_singular_and_plural_stay_on_the_list_once(self):
+        self.client.post("/lista/anadir/", {"name": "patata"})
+        response = self.client.post("/lista/anadir/", {"name": "Patatas"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Ya está en la lista.")
+        self.assertEqual(ShoppingItem.objects.filter(household=self.household).count(), 1)
+
     def test_aisle_groups_the_item_and_check_moves_it_to_the_cart(self):
         self.client.post("/lista/anadir/", {"name": "Tomates"})
         item = ShoppingItem.objects.get()

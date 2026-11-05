@@ -1,7 +1,7 @@
 from django.db import IntegrityError
 from django.utils import timezone
 
-from apps.shopping.models import Purchase, ShoppingItem, normalize_item_name
+from apps.shopping.models import Purchase, ShoppingItem, product_key
 
 
 class ShoppingError(Exception):
@@ -12,7 +12,7 @@ def add_shopping_item(household, name, user=None):
     cleaned = " ".join((name or "").split())
     if not cleaned:
         raise ShoppingError("Escribe lo que falta.")
-    normalized = normalize_item_name(cleaned)
+    normalized = product_key(cleaned)
     if ShoppingItem.objects.filter(household=household, normalized_name=normalized).exists():
         raise ShoppingError("Ya está en la lista.")
     try:

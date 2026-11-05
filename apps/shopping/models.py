@@ -9,6 +9,15 @@ def normalize_item_name(name: str) -> str:
     return re.sub(r"\s+", " ", (name or "").strip()).casefold()
 
 
+def product_key(name: str) -> str:
+    key = normalize_item_name(name)
+    if len(key) > 4 and key.endswith("s"):
+        stem = key[:-1]
+        if len(stem) >= 4:
+            return stem
+    return key
+
+
 class ShoppingItem(models.Model):
     class Aisle(models.TextChoices):
         NONE = "none", "Sin pasillo"
@@ -61,7 +70,7 @@ class ShoppingItem(models.Model):
 
     def save(self, *args, **kwargs):
         self.name = re.sub(r"\s+", " ", (self.name or "").strip())
-        self.normalized_name = normalize_item_name(self.name)
+        self.normalized_name = product_key(self.name)
         super().save(*args, **kwargs)
 
 

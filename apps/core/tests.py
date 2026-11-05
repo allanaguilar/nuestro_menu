@@ -13,7 +13,7 @@ from apps.core.week import weekday_short
 from apps.households.services import create_household_for_user
 from apps.meal_plans.models import MealPlan, MealPlanEntry
 from apps.recipes.models import Recipe
-from apps.shopping.models import Purchase, ShoppingItem
+from apps.shopping.models import Purchase, ShoppingItem, product_key
 from apps.shopping.services import clear_bought
 
 
@@ -155,6 +155,21 @@ class SummaryTests(TestCase):
         self.assertNotContains(page, "Secreto")
         self.assertContains(page, "fa-chart-column")
         self.assertContains(page, 'aria-current="page"')
+
+    def test_potato_spellings_count_as_one_purchase(self):
+        for name in ("patata", "patatas", "Patatas"):
+            Purchase.objects.create(
+                household=self.household,
+                name=name,
+                normalized_name=name.casefold(),
+                bought_on=date(2026, 11, 5),
+            )
+        with patch("apps.core.summary.timezone.localdate", return_value=date(2026, 11, 5)):
+            page = self.client.get("/resumen/")
+        self.assertContains(page, "Patatas")
+        self.assertContains(page, 'summary-count">3<')
+        self.assertNotContains(page, ">patata<")
+        self.assertEqual(product_key("Patatas"), product_key("patata"))
 
     def test_summary_requires_login(self):
         self.client.logout()
