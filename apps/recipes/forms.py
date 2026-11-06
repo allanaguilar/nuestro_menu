@@ -7,10 +7,19 @@ from apps.recipes.services import parse_recipe_import_text
 class RecipeForm(forms.ModelForm):
     class Meta:
         model = Recipe
-        fields = ("name", "category", "prep_time_minutes", "ingredients", "steps", "is_meal")
+        fields = (
+            "name",
+            "category",
+            "servings",
+            "prep_time_minutes",
+            "ingredients",
+            "steps",
+            "is_meal",
+        )
         labels = {
             "name": "Nombre",
             "category": "Categoría",
+            "servings": "Raciones",
             "prep_time_minutes": "Tiempo (minutos)",
             "ingredients": "Ingredientes",
             "steps": "Pasos",

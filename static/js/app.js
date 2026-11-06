@@ -227,11 +227,13 @@
     const message = button && button.getAttribute("data-confirm");
     if (!message) {
       form.classList.add("is-loading");
+      showAiWait(form);
       return;
     }
     if (form.dataset.confirmed === "1") {
       delete form.dataset.confirmed;
       form.classList.add("is-loading");
+      showAiWait(form);
       return;
     }
     event.preventDefault();
@@ -250,6 +252,19 @@
       form.requestSubmit(button);
     }, 0);
   }, true);
+
+  function showAiWait(form) {
+    if (!form.classList.contains("recipe-ai-form")) return;
+    const wait = document.getElementById("ai-wait");
+    if (wait) wait.hidden = false;
+  }
+  function hideAiWait() {
+    const wait = document.getElementById("ai-wait");
+    if (wait) wait.hidden = true;
+  }
+  document.addEventListener("htmx:sendError", hideAiWait);
+  document.addEventListener("htmx:responseError", hideAiWait);
+  document.addEventListener("htmx:historyRestore", hideAiWait);
 
   function releaseForm(event) {
     const form = event.detail && event.detail.elt;

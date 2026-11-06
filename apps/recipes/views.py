@@ -1,5 +1,6 @@
+from django.conf import settings
 from django.contrib import messages
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views import View
 from django.views.generic import CreateView, FormView, ListView, UpdateView
@@ -7,6 +8,7 @@ from django.views.generic import CreateView, FormView, ListView, UpdateView
 from apps.core.mixins import HouseholdRequiredMixin, get_owned_or_404
 from apps.preferences.selectors import preference_map
 from apps.preferences.services import toggle_favorite
+from apps.recipes.ai import RecipeReadError, interpret_recipe
 from apps.recipes.forms import RecipeForm, RecipeImportForm
 from apps.recipes.selectors import recipes_for_household, search_recipes
 from apps.recipes.services import (
@@ -44,6 +46,34 @@ class RecipeListView(HouseholdRequiredMixin, ListView):
         return context
 
 
+def render_recipe_form(request, *, title, form, recipe=None, pasted=""):
+    action = (
+        reverse("recipes:update", args=[recipe.pk])
+        if recipe is not None
+        else reverse("recipes:create")
+    )
+    return render(
+        request,
+        "recipes/form.html",
+        {
+            "title": title,
+            "form": form,
+            "recipe": recipe,
+            "pasted": pasted,
+            "form_action": action,
+            "ai_enabled": bool(settings.GEMINI_API_KEY),
+        },
+    )
+
+
+def recipe_form_data(recipe, parsed):
+    data = dict(parsed)
+    keep_meal = recipe.is_meal if recipe is not None else True
+    if keep_meal:
+        data["is_meal"] = "on"
+    return data
+
+
 class RecipeCreateView(HouseholdRequiredMixin, CreateView):
     template_name = "recipes/form.html"
     form_class = RecipeForm
@@ -61,6 +91,10 @@ class RecipeCreateView(HouseholdRequiredMixin, CreateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["title"] = "Nueva receta"
+        context["ai_enabled"] = bool(settings.GEMINI_API_KEY)
+        context["pasted"] = ""
+        context["recipe"] = None
+        context["form_action"] = reverse("recipes:create")
         return context
 
 
@@ -105,7 +139,38 @@ class RecipeUpdateView(HouseholdRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["title"] = "Editar receta"
+        context["ai_enabled"] = bool(settings.GEMINI_API_KEY)
+        context["pasted"] = ""
+        context["recipe"] = self.object
+        context["form_action"] = reverse("recipes:update", args=[self.object.pk])
         return context
+
+
+class RecipeInterpretView(HouseholdRequiredMixin, View):
+    def get(self, request):
+        return redirect("recipes:create")
+
+    def post(self, request):
+        pasted = request.POST.get("source", "")
+        recipe = None
+        pk = (request.POST.get("pk") or "").strip()
+        if pk:
+            recipe = get_owned_or_404(recipes_for_household(request.household), pk=pk)
+        title = "Editar receta" if recipe is not None else "Nueva receta"
+        try:
+            parsed = interpret_recipe(pasted)
+        except RecipeReadError:
+            messages.error(request, "No se pudo leer la receta. Escríbela en el formulario.")
+            form = RecipeForm(household=request.household, instance=recipe)
+        else:
+            form = RecipeForm(
+                data=recipe_form_data(recipe, parsed),
+                household=request.household,
+                instance=recipe,
+            )
+        return render_recipe_form(
+            request, title=title, form=form, recipe=recipe, pasted=pasted
+        )
 
 
 class RecipeArchiveView(HouseholdRequiredMixin, View):

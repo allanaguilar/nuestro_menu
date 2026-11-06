@@ -197,6 +197,48 @@ main > h1 + .lede, .hero .lede, .page-head .lede {
   color: var(--ink);
   border-color: var(--line);
 }
+.button-ai {
+  display: flex;
+  width: fit-content;
+  margin: 0.9rem auto 0;
+  gap: 0.45rem;
+}
+.button-ai .icon { color: var(--olive-dark); }
+.ai-wait {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: rgba(243, 245, 247, 0.86);
+}
+.ai-wait[hidden] { display: none; }
+.ai-wait p {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  margin: 0;
+  padding: 1.4rem 1.6rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow);
+  font-weight: 600;
+}
+.ai-wait p::before {
+  content: "";
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 50%;
+  border: 3px solid var(--line);
+  border-top-color: var(--olive);
+  animation: ai-spin 0.8s linear infinite;
+}
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ai-wait p::before { animation: none; border-top-color: var(--olive); }
+}
 .button-accent { background: var(--terracotta); }
 .button-ghost { background: transparent; color: var(--olive-dark); border: 1px solid var(--line); box-shadow: none; }
 .button-ghost.is-pressed { background: var(--bg-accent); color: var(--ink); }
@@ -204,6 +246,12 @@ main > h1 + .lede, .hero .lede, .page-head .lede {
 .field-input, input[type="text"], input[type="password"], input[type="email"], input[type="search"], textarea, select {
   width: 100%; padding: 0.7rem 0.85rem; border-radius: 12px; border: 1px solid var(--line);
   background: #fff; font: inherit; min-height: 44px;
+}
+.field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.8rem;
+  align-items: end;
 }
 label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
 .req { color: var(--err); text-decoration: none; font-weight: 700; }

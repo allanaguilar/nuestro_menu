@@ -28,7 +28,7 @@
   <li class="panel recipe-item">
     <div>
       <h2>{{ recipe.name }}</h2>
-      <p class="tag">{{ recipe.get_category_display }}{% if recipe.prep_time_minutes %} · {{ recipe.prep_time_minutes }} min{% endif %}{% if not recipe.is_meal %} · apunte{% endif %}{% if not recipe.is_active %} · archivada{% endif %}</p>
+      <p class="tag">{{ recipe.meta_line }}{% if not recipe.is_meal %} · apunte{% endif %}{% if not recipe.is_active %} · archivada{% endif %}</p>
     </div>
     <div class="icon-row">
       <button type="button" class="icon-btn recipe-share" data-title="{{ recipe.name }}" data-text="{{ recipe.share_text }}" aria-label="Compartir {{ recipe.name }}">

@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/fontawesome.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/solid.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/regular.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=57">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=61">
   </head>
   {% with ns=request.resolver_match.namespace un=request.resolver_match.url_name %}
   <body hx-boost="true"{% if user.is_authenticated and request.household %} data-home="{{ request.household.id }}"{% endif %}>
@@ -77,14 +77,14 @@
       {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
       <a href="{% url 'core:dashboard' %}" data-title="Inicio"{% if ns == "core" and name == "dashboard" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="home" %}<span>Inicio</span></a>
       <a href="{% url 'meal_plans:current' %}" data-title="Menú semanal"{% if ns == "meal_plans" and name != "history" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="calendar" %}<span>Menú</span></a>
-      <a href="{% url 'shopping:list' %}" data-title="Lista de compra"{% if ns == "shopping" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="cart" %}<span>Lista</span></a>
+      <a href="{% url 'shopping:list' %}" data-title="Lista de compra"{% if ns == "shopping" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="cart" %}<span>Compra</span></a>
       {% if show_baby_menu %}<a href="{% url 'baby:current' %}" data-title="Bebé"{% if ns == "baby" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="baby" %}<span>Bebé</span></a>{% endif %}
       <a href="{% url 'chores:list' %}" data-title="Por hacer"{% if ns == "chores" %} aria-current="page"{% endif %}>{% include "includes/icon.html" with name="tasks" %}<span>Por hacer</span></a>
       {% endwith %}
     </nav>
     {% endif %}
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
-    <script src="{% static 'js/app.js' %}?v=38" defer></script>
+    <script src="{% static 'js/app.js' %}?v=39" defer></script>
   </body>
   {% endwith %}
 </html>

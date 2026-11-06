@@ -69,7 +69,7 @@
           </button>
         </div>
       </form>
-      <p class="day-recipe-meta">{{ item.entry.recipe.get_category_display }}{% if item.entry.recipe.prep_time_minutes %} · {{ item.entry.recipe.prep_time_minutes }} min{% endif %}</p>
+      <p class="day-recipe-meta">{{ item.entry.recipe.meta_line }}</p>
       {% include "includes/recipe_body.html" with recipe=item.entry.recipe %}
     </section>
     {% else %}

@@ -3,18 +3,45 @@
 {% block content %}
 <section class="auth-card wide">
   <h1>{{ title }}</h1>
-  <form method="post" novalidate>
+  {% if ai_enabled %}
+  <form class="recipe-ai-form" method="post" action="{% url 'recipes:interpret' %}">
+    {% csrf_token %}
+    {% if recipe %}<input type="hidden" name="pk" value="{{ recipe.pk }}">{% endif %}
+    <label for="pegar-receta">Pega la receta</label>
+    <textarea class="field-input recipe-text" id="pegar-receta" name="source" rows="8" placeholder="Pega aquí la receta. Se procesará con IA para sacar los ingredientes y los pasos y ponerlos en el formulario.">{{ pasted }}</textarea>
+    <button class="button button-secondary button-ai" type="submit">{% include "includes/icon.html" with name="sparkles" %}Procesar con IA</button>
+  </form>
+  <div class="ai-wait" id="ai-wait" hidden>
+    <p role="status">Procesando la receta…</p>
+  </div>
+  {% endif %}
+  <form method="post" action="{{ form_action }}" novalidate>
     {% csrf_token %}
     {{ form.non_field_errors }}
     {% for field in form %}
-      {% if field.name == "is_meal" %}
+      {% if field.name == "prep_time_minutes" %}
+      {% elif field.name == "servings" %}
+        <div class="field-pair">
+          <div>
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {{ field.errors }}
+          </div>
+          <div>
+            <label for="{{ form.prep_time_minutes.id_for_label }}">{{ form.prep_time_minutes.label }}</label>
+            {{ form.prep_time_minutes }}
+            {{ form.prep_time_minutes.errors }}
+          </div>
+        </div>
+      {% elif field.name == "is_meal" %}
         <label class="check">{{ field }} {{ field.label }}</label>
         {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
+        {{ field.errors }}
       {% else %}
         <label for="{{ field.id_for_label }}">{{ field.label }}</label>
         {{ field }}
+        {{ field.errors }}
       {% endif %}
-      {{ field.errors }}
     {% endfor %}
     <button class="button" type="submit">Guardar</button>
     <a class="button button-secondary" href="{% url 'recipes:list' %}">Cancelar</a>

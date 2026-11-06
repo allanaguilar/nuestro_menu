@@ -114,6 +114,8 @@ DEFAULT_FROM_EMAIL = env(
 )
 # Render bloquea los puertos SMTP. Con clave de API el correo sale por HTTPS.
 BREVO_API_KEY = env("BREVO_API_KEY", default="")
+GEMINI_API_KEY = env("GEMINI_API_KEY", default="")
+GEMINI_MODEL = env("GEMINI_MODEL", default="gemini-3.5-flash")
 VAPID_PUBLIC_KEY = env("VAPID_PUBLIC_KEY", default="")
 VAPID_PRIVATE_KEY = env("VAPID_PRIVATE_KEY", default="")
 VAPID_SUBJECT = env("VAPID_SUBJECT", default="mailto:no-reply@nuestro-menu.local")

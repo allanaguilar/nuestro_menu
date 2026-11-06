@@ -26,6 +26,12 @@ class Recipe(models.Model):
     category = models.CharField(
         "categoría", max_length=20, choices=Category.choices, default=Category.OTROS
     )
+    servings = models.PositiveIntegerField(
+        "raciones",
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1)],
+    )
     prep_time_minutes = models.PositiveIntegerField(
         "tiempo de preparación (minutos)",
         null=True,
@@ -54,6 +60,10 @@ class Recipe(models.Model):
                 | models.Q(prep_time_minutes__gte=1),
                 name="recipe_prep_time_positive",
             ),
+            models.CheckConstraint(
+                check=models.Q(servings__isnull=True) | models.Q(servings__gte=1),
+                name="recipe_servings_positive",
+            ),
         ]
         indexes = [
             models.Index(fields=["household", "normalized_name"]),
@@ -75,12 +85,16 @@ class Recipe(models.Model):
     def step_lines(self):
         return self.text_lines(self.steps)
 
-    def share_text(self):
-        lines = [self.name]
-        meta = self.get_category_display()
+    def meta_line(self):
+        parts = [self.get_category_display()]
+        if self.servings:
+            parts.append(f"{self.servings} raciones")
         if self.prep_time_minutes:
-            meta = f"{meta} · {self.prep_time_minutes} min"
-        lines.append(meta)
+            parts.append(f"{self.prep_time_minutes} min")
+        return " · ".join(parts)
+
+    def share_text(self):
+        lines = [self.name, self.meta_line()]
         if self.ingredient_lines:
             lines.extend(["", "Ingredientes", *[f"- {line}" for line in self.ingredient_lines]])
         if self.step_lines:

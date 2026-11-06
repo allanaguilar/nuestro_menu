@@ -1,7 +1,10 @@
+import json
 from datetime import date
+from unittest.mock import patch
+from urllib.error import URLError
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import TestCase, override_settings
 
 from apps.households.services import create_household_for_user
 from apps.meal_plans.models import MealPlan, MealPlanEntry
@@ -129,14 +132,14 @@ class RecipeTests(TestCase):
             {
                 "name": "Arroz cubana",
                 "category": Recipe.Category.ARROZ,
+                "servings": 4,
                 "prep_time_minutes": 30,
                 "notes": "Huevo y tomate",
             },
         )
         self.assertEqual(response.status_code, 302)
-        self.assertTrue(
-            Recipe.objects.filter(household=self.household, normalized_name="arroz cubana").exists()
-        )
+        recipe = Recipe.objects.get(household=self.household, normalized_name="arroz cubana")
+        self.assertEqual(recipe.servings, 4)
 
     def test_edit_form_keeps_long_recipe_fields_in_a_scroll_box(self):
         self.client.login(username="allan", password="clave-segura-1")
@@ -230,3 +233,80 @@ class RecipeImportTests(TestCase):
         self.assertEqual(len(data["created"]), 1)
         self.assertEqual(data["skipped"], ["Lentejas"])
         self.assertEqual(data["created"][0]["category"], Recipe.Category.CARNE)
+
+    def _model_body(self, **fields):
+        payload = {
+            "name": "Lentejas",
+            "category": "legumbres",
+            "servings": 4,
+            "prep_time_minutes": 40,
+            "ingredients": "200 g de lentejas",
+            "steps": "Cocer las lentejas.",
+        }
+        payload.update(fields)
+        raw = json.dumps(
+            {"candidates": [{"content": {"parts": [{"text": json.dumps(payload)}]}}]}
+        ).encode()
+        return raw
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba", GEMINI_MODEL="gemini-3.5-flash")
+    def test_interpret_fills_the_form_without_saving(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        page = self.client.get("/recetas/nueva/")
+        self.assertContains(page, "Procesar con IA")
+        self.assertContains(page, "field-pair")
+        self.assertContains(page, "Raciones")
+        self.assertContains(page, "Procesando la receta…")
+        self.assertContains(page, "fa-wand-magic-sparkles")
+        self.assertContains(page, "placeholder=\"Pega aquí la receta. Se procesará con IA para sacar los ingredientes y los pasos y ponerlos en el formulario.\"")
+        recipe = Recipe.objects.get(household=self.household, name="Lentejas")
+        edit = self.client.get(f"/recetas/{recipe.id}/editar/")
+        self.assertContains(edit, "Procesar con IA")
+        before = Recipe.objects.count()
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = self._model_body()
+            response = self.client.post("/recetas/interpretar/", {"source": "lentejas con cebolla"})
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Lentejas")
+        self.assertContains(response, 'name="servings"')
+        self.assertContains(response, 'value="4"')
+        self.assertContains(response, "200 g de lentejas")
+        self.assertContains(response, "Cocer las lentejas.")
+        self.assertContains(response, 'value="legumbres" selected')
+        self.assertEqual(Recipe.objects.count(), before)
+        sent = urlopen.call_args.args[0]
+        self.assertIn("models/gemini-3.5-flash:generateContent", sent.full_url)
+        self.assertEqual(sent.get_header("X-goog-api-key"), "clave-de-prueba")
+        instruction = json.loads(sent.data)["systemInstruction"]["parts"][0]["text"]
+        self.assertIn("deduce las raciones (platos) a partir de las cantidades", instruction)
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_unknown_category_uses_the_name(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        before = Recipe.objects.count()
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = self._model_body(
+                category="sopas"
+            )
+            response = self.client.post("/recetas/interpretar/", {"source": "lentejas"})
+        self.assertContains(response, 'value="legumbres" selected')
+        self.assertEqual(Recipe.objects.count(), before)
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_network_failure_keeps_the_text_and_saves_nothing(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        before = Recipe.objects.count()
+        with patch("apps.recipes.ai.urlopen", side_effect=URLError("no")):
+            response = self.client.post(
+                "/recetas/interpretar/", {"source": "lentejas con cebolla"}
+            )
+        self.assertContains(response, "No se pudo leer la receta. Escríbela en el formulario.")
+        self.assertContains(response, "lentejas con cebolla")
+        self.assertEqual(Recipe.objects.count(), before)
+
+    @override_settings(GEMINI_API_KEY="")
+    def test_paste_box_stays_hidden_without_a_key(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        response = self.client.get("/recetas/nueva/")
+        self.assertNotContains(response, "Procesar con IA")
+        self.assertNotContains(response, "Pega la receta")
