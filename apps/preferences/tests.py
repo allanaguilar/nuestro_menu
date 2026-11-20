@@ -47,10 +47,12 @@ class PreferenceTests(TestCase):
         self.assertNotContains(home, 'data-title="Bebé"')
         self.assertNotContains(home, ">Bebé</span>")
         prefs = self.client.get("/preferencias/")
-        self.assertContains(prefs, "Ver menú bebé")
-        self.assertNotContains(prefs, 'name="show_baby_menu" checked')
+        self.assertNotContains(prefs, "Ver menú bebé")
+        home_settings = self.client.get("/hogar/")
+        self.assertContains(home_settings, "Ver menú bebé")
+        self.assertNotContains(home_settings, 'name="show_baby_menu" checked')
         turned_on = self.client.post(
-            "/preferencias/",
+            "/hogar/",
             {"form": "baby_menu", "show_baby_menu": "on"},
             follow=True,
         )
@@ -59,7 +61,7 @@ class PreferenceTests(TestCase):
         visible = self.client.get("/inicio/")
         self.assertContains(visible, 'data-title="Bebé"')
         self.assertContains(visible, ">Bebé</span>")
-        self.client.post("/preferencias/", {"form": "baby_menu"})
+        self.client.post("/hogar/", {"form": "baby_menu"})
         hidden = self.client.get("/inicio/")
         self.assertNotContains(hidden, 'data-title="Bebé"')
 

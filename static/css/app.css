@@ -631,7 +631,7 @@ textarea.recipe-text {
 .chore-item > form:first-child { grid-column: 1; grid-row: 1; min-width: 0; }
 .chore-photo-form { grid-column: 2; grid-row: 1; }
 .chore-item > .chore-edit-open { grid-column: 3; grid-row: 1; }
-.chore-item > .chore-ask-open { grid-column: 4; grid-row: 1; }
+.chore-item > .chore-delete { grid-column: 4; grid-row: 1; }
 .chore-item .check { margin: 0; width: 100%; min-width: 0; align-items: center; min-height: 52px; }
 .chore-copy { display: flex; flex-direction: column; min-width: 0; }
 .chore-meta { color: var(--muted); font-size: 0.86rem; line-height: 1.2; }
@@ -691,6 +691,12 @@ textarea.recipe-text {
 }
 .photo-modal-actions form { display: flex; margin: 0; }
 .photo-modal-actions .button { width: 100%; }
+.photo-modal-actions .chore-ask { grid-column: 1 / -1; }
+.photo-modal-actions .chore-ask .button { width: auto; }
+.toolbar .ask-wrap,
+.recipe-more .ask-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 0.45rem; }
+.recipe-more { display: flex; flex-direction: column; align-items: flex-start; gap: 0.65rem; margin-top: 1.2rem; }
+.recipe-more form { margin: 0; }
 .edit-task { display: flex; flex-direction: column; gap: 0.65rem; margin: 0; }
 .edit-task label { margin: 0; }
 .pick-form select {

@@ -46,5 +46,31 @@
     <button class="button" type="submit">Guardar</button>
     <a class="button button-secondary" href="{% url 'recipes:list' %}">Cancelar</a>
   </form>
+  {% if recipe %}
+  <div class="recipe-more">
+    <p class="sr-only" id="recipe-share-status" aria-live="polite"></p>
+    <button type="button" class="button button-secondary recipe-share" data-title="{{ recipe.name }}" data-text="{{ recipe.share_text }}" aria-label="Compartir {{ recipe.name }}">
+      {% include "includes/icon.html" with name="share" %} Compartir
+    </button>
+    <form method="post" action="{% url 'recipes:archive' recipe.pk %}">
+      {% csrf_token %}
+      <button class="button button-ghost" type="submit">{% if recipe.is_active %}Archivar{% else %}Reactivar{% endif %}</button>
+    </form>
+    {% if not recipe.is_active %}
+    <div class="ask-wrap">
+      <button type="button" class="button button-ghost chore-ask-open" aria-expanded="false" aria-controls="borrar-{{ recipe.pk }}" aria-label="Borrar {{ recipe.name }}">Borrar</button>
+      <div class="chore-ask" id="borrar-{{ recipe.pk }}" hidden>
+        <p>¿Deseas borrar «{{ recipe.name }}»?</p>
+        <form method="post" action="{% url 'recipes:delete' recipe.pk %}">
+          {% csrf_token %}
+          <input type="hidden" name="next" value="{% url 'recipes:list' %}?archivo=1">
+          <button class="button" type="submit">Borrar</button>
+          <button type="button" class="button button-ghost chore-ask-cancel">Cancelar</button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
 </section>
 {% endblock %}

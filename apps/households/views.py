@@ -10,6 +10,7 @@ from django.views.generic import FormView, TemplateView
 from apps.core.mail import EmailDeliveryError
 from apps.core.mixins import HouseholdRequiredMixin
 from apps.households.forms import HouseholdSettingsForm, PasswordResetForm, SignUpForm
+from apps.preferences.models import MenuPreference
 from apps.households.models import HouseholdInvite
 from apps.households.selectors import get_user_membership, list_members
 from apps.households.services import (
@@ -142,6 +143,19 @@ class HouseholdSettingsView(HouseholdRequiredMixin, FormView):
                 reverse("households:accept_invite", args=[latest_invite.token])
             )
         return context
+
+    def post(self, request, *args, **kwargs):
+        if request.POST.get("form") == "baby_menu":
+            MenuPreference.objects.update_or_create(
+                user=request.user,
+                defaults={"show_baby_menu": request.POST.get("show_baby_menu") == "on"},
+            )
+            if request.POST.get("show_baby_menu") == "on":
+                messages.success(request, "Menú del bebé visible.")
+            else:
+                messages.success(request, "Menú del bebé oculto.")
+            return redirect("households:settings")
+        return super().post(request, *args, **kwargs)
 
     def form_valid(self, form):
         household = self.request.household

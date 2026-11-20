@@ -19,20 +19,37 @@
 </div>
 
 <div class="toolbar action-row">
+  {% if plan and plan.status == 'approved' %}
+  <div class="ask-wrap">
+    <button type="button" class="button chore-ask-open" aria-expanded="false" aria-controls="confirmar-regenerar">Regenerar</button>
+    <div class="chore-ask" id="confirmar-regenerar" hidden>
+      <p>El menú aprobado se sustituirá por un borrador. ¿Continuar?</p>
+      <form method="post" action="{% url 'meal_plans:generate' week_start=week_start|date:'Y-m-d' %}">
+        {% csrf_token %}
+        <input type="hidden" name="confirm_replace" value="1">
+        <button class="button" type="submit">Regenerar</button>
+        <button type="button" class="button button-ghost chore-ask-cancel">Cancelar</button>
+      </form>
+    </div>
+  </div>
+  {% else %}
   <form method="post" action="{% url 'meal_plans:generate' week_start=week_start|date:'Y-m-d' %}">
     {% csrf_token %}
-    {% if plan and plan.status == 'approved' %}
-    <input type="hidden" name="confirm_replace" value="1">
-    <button class="button" type="submit" data-confirm="El menú aprobado se sustituirá por un borrador. ¿Continuar?">Regenerar</button>
-    {% else %}
     <button class="button" type="submit">Generar menú</button>
-    {% endif %}
   </form>
+  {% endif %}
   {% if plan and plan.entries.count == 7 and plan.status != 'approved' %}
-  <form method="post" action="{% url 'meal_plans:approve' week_start=week_start|date:'Y-m-d' %}">
-    {% csrf_token %}
-    <button class="button button-accent" type="submit" data-confirm="¿Aprobar este menú para el historial?">Aprobar</button>
-  </form>
+  <div class="ask-wrap">
+    <button type="button" class="button button-accent chore-ask-open" aria-expanded="false" aria-controls="confirmar-aprobar">Aprobar</button>
+    <div class="chore-ask" id="confirmar-aprobar" hidden>
+      <p>¿Aprobar este menú para el historial?</p>
+      <form method="post" action="{% url 'meal_plans:approve' week_start=week_start|date:'Y-m-d' %}">
+        {% csrf_token %}
+        <button class="button button-accent" type="submit">Aprobar</button>
+        <button type="button" class="button button-ghost chore-ask-cancel">Cancelar</button>
+      </form>
+    </div>
+  </div>
   {% endif %}
 </div>
 
@@ -63,9 +80,7 @@
         {{ item.form.recipe }}
         <p class="tag"{% if not item.entry %} hidden{% endif %}>{% if item.entry %}{{ item.entry.recipe.get_category_display }} · {% if item.entry.selection_source == 'manual' %}elegido a mano{% else %}propuesto{% endif %}{% endif %}</p>
         <div class="icon-row">
-          <button class="icon-btn" type="submit" aria-label="Guardar el {{ item.label }}">
-            {% include "includes/icon.html" with name="save" %}
-          </button>
+          <button type="submit" class="sr-only" tabindex="-1" aria-hidden="true"></button>
           <button class="icon-btn" type="submit" formaction="{% url 'meal_plans:alternative' week_start=week_start|date:'Y-m-d' day=item.date|date:'Y-m-d' %}" aria-label="Proponer alternativa el {{ item.label }}">
             {% include "includes/icon.html" with name="refresh" %}
           </button>

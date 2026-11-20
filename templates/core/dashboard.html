@@ -63,10 +63,6 @@
         <div class="home-day-choice">
           <label class="sr-only" for="{{ item.form.recipe.id_for_label }}">Plato del {{ item.label }}</label>
           {{ item.form.recipe }}
-          <button class="icon-btn" type="submit" aria-label="Guardar el plato del {{ item.label }}">
-            {% include "includes/icon.html" with name="save" %}
-            <span class="sr-only">Guardar</span>
-          </button>
         </div>
       </form>
       <p class="day-recipe-meta">{{ item.entry.recipe.meta_line }}</p>

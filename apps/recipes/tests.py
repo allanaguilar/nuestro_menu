@@ -38,9 +38,10 @@ class RecipeTests(TestCase):
         self.assertIn("Cocer las lentejas.", text)
         self.client.login(username="allan", password="clave-segura-1")
         page = self.client.get("/recetas/")
-        self.assertContains(page, "Compartir Lentejas")
         self.assertContains(page, "200 g de lentejas")
         self.assertContains(page, "Cocer las lentejas.")
+        edit = self.client.get(f"/recetas/{self.recipe.pk}/editar/")
+        self.assertContains(edit, "Compartir Lentejas")
 
     def test_normalized_name(self):
         self.assertEqual(normalize_recipe_name("  Lentejas   Estofadas "), "lentejas estofadas")
@@ -58,7 +59,8 @@ class RecipeTests(TestCase):
         response = self.client.get("/recetas/")
         self.assertContains(response, "Lentejas")
         self.assertContains(response, "Vista previa de Lentejas")
-        self.assertContains(response, "Compartir Lentejas")
+        self.assertContains(response, "Editar Lentejas")
+        self.assertNotContains(response, "Compartir Lentejas")
         self.assertContains(response, "Ver archivadas")
         self.assertContains(response, "button-ghost")
         self.assertContains(response, 'aria-pressed="false"')
@@ -68,7 +70,7 @@ class RecipeTests(TestCase):
         self.assertNotContains(response, "Secreto")
 
     def test_archived_check_shows_only_archived(self):
-        Recipe.objects.create(
+        old = Recipe.objects.create(
             household=self.household,
             name="Sopa vieja",
             category=Recipe.Category.OTROS,
@@ -82,8 +84,10 @@ class RecipeTests(TestCase):
         active = self.client.get("/recetas/")
         self.assertContains(active, "Vista previa de Lentejas")
         self.assertNotContains(active, "Sopa vieja")
-        self.assertContains(archived, "Borrar Sopa vieja")
-        self.assertContains(archived, "¿Deseas borrar «Sopa vieja»?")
+        self.assertNotContains(archived, "Borrar Sopa vieja")
+        edit = self.client.get(f"/recetas/{old.pk}/editar/")
+        self.assertContains(edit, "Borrar Sopa vieja")
+        self.assertContains(edit, "¿Deseas borrar «Sopa vieja»?")
         self.assertNotContains(active, "Borrar Lentejas")
 
     def test_delete_archived_recipe(self):

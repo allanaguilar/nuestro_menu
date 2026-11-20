@@ -191,7 +191,7 @@
     }
     const askOpen = event.target.closest(".chore-ask-open");
     if (askOpen) {
-      const item = askOpen.closest(".chore-item, .recipe-item");
+      const item = askOpen.closest(".chore-item, .recipe-item, .ask-wrap");
       const ask = item && item.querySelector(".chore-ask");
       if (!ask) return;
       const show = ask.hidden;
@@ -389,6 +389,17 @@
     }
     tag.textContent = option.dataset.new ? texture + " · nuevo" : texture;
     tag.hidden = false;
+  });
+
+  document.addEventListener("change", function (event) {
+    const select = event.target;
+    if (!(select instanceof HTMLSelectElement)) return;
+    if (!select.classList.contains("dish-select") && !select.classList.contains("baby-food-select")) return;
+    const form = select.form;
+    if (!form) return;
+    if ((select.dataset.current || "") === select.value) return;
+    const saver = form.querySelector('button[type="submit"]:not([formaction])');
+    form.requestSubmit(saver || undefined);
   });
 
   document.addEventListener("change", function (event) {

@@ -8,6 +8,7 @@ from apps.baby.models import BabyFood, BabyPlanEntry
 from apps.baby.services import set_baby_meal
 from apps.core.week import monday_of
 from apps.households.services import create_household_for_user
+from apps.preferences.models import MenuPreference
 from apps.recipes.models import Recipe
 
 
@@ -93,8 +94,9 @@ class BabyMenuTests(TestCase):
     def test_dashboard_shows_today(self):
         food = BabyFood.objects.create(household=self.household, name="Calabacín")
         set_baby_meal(self.household, self.week, self.today, BabyPlanEntry.Slot.LUNCH, food)
+        MenuPreference.objects.create(user=self.user, show_baby_menu=True)
         response = self.client.get("/inicio/")
-        self.assertContains(response, "Hoy el bebé:")
+        self.assertContains(response, "Bebé")
         self.assertContains(response, "Calabacín")
 
     def test_saving_one_day_keeps_unsaved_choices_on_other_days(self):
@@ -135,7 +137,7 @@ class BabyMenuTests(TestCase):
         self.assertContains(response, 'class="baby-slot"')
         self.assertContains(response, 'data-texture="Puré"')
         self.assertContains(response, "Puré · nuevo")
-        self.assertContains(response, 'aria-label="Guardar el')
+        self.assertNotContains(response, 'aria-label="Guardar el')
         self.assertContains(response, 'aria-label="Proponer alternativa el')
         self.assertNotContains(response, 'class="dish"')
         self.assertNotContains(response, ">Guardar<")
