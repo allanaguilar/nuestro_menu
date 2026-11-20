@@ -169,6 +169,26 @@
       if (dialog && dialog.open) dialog.close();
       return;
     }
+    const editOpen = event.target.closest(".chore-edit-open");
+    if (editOpen) {
+      const dialog = document.getElementById("editar-modal");
+      const form = document.getElementById("editar-tarea");
+      if (!dialog || !form) return;
+      form.action = editOpen.getAttribute("data-edit");
+      const title = form.querySelector("#id_editar-title");
+      const cadence = form.querySelector("#id_editar-cadence");
+      const assignee = form.querySelector("#id_editar-assignee");
+      if (title) title.value = editOpen.getAttribute("data-title") || "";
+      if (cadence) cadence.value = editOpen.getAttribute("data-cadence") || "hoy";
+      if (assignee) assignee.value = editOpen.getAttribute("data-assignee") || "";
+      dialog.showModal();
+      return;
+    }
+    if (event.target.closest(".edit-modal-close") || event.target.id === "editar-modal") {
+      const dialog = document.getElementById("editar-modal");
+      if (dialog && dialog.open) dialog.close();
+      return;
+    }
     const askOpen = event.target.closest(".chore-ask-open");
     if (askOpen) {
       const item = askOpen.closest(".chore-item, .recipe-item");

@@ -26,6 +26,7 @@ class AddChoreForm(forms.Form):
     cadence = forms.ChoiceField(
         label="Cuándo",
         choices=Chore.Cadence.choices,
+        required=False,
         initial=Chore.Cadence.TODAY,
         widget=forms.Select(attrs={"class": "field-input"}),
     )

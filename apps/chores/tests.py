@@ -72,6 +72,51 @@ class ChoreTests(TestCase):
         self.assertContains(done, "is-done")
         blank = self.client.post("/por-hacer/", {"title": "  ", "cadence": "hoy"})
         self.assertContains(blank, "Escribe la tarea.")
+        plain = self.client.post("/por-hacer/", {"title": "Sacar la basura"})
+        self.assertRedirects(plain, "/por-hacer/")
+        quick = Chore.objects.get(title="Sacar la basura")
+        self.assertEqual(quick.cadence, Chore.Cadence.TODAY)
+        self.assertIsNone(quick.assignee_id)
+
+    def test_edit_updates_the_text_when_and_who(self):
+        chore = add_chore(self.household, "Recoger un paquete", Chore.Cadence.TODAY, None, self.today)
+        page = self.client.get("/por-hacer/")
+        self.assertContains(page, "Editar Recoger un paquete")
+        self.assertContains(page, 'id="editar-modal"')
+        saved = self.client.post(
+            f"/por-hacer/{chore.pk}/editar/",
+            {
+                "editar-title": "Código del paquete",
+                "editar-cadence": "dia",
+                "editar-assignee": self.naiara.pk,
+            },
+        )
+        self.assertRedirects(saved, "/por-hacer/")
+        chore.refresh_from_db()
+        self.assertEqual(chore.title, "Código del paquete")
+        self.assertEqual(chore.cadence, Chore.Cadence.DAILY)
+        self.assertEqual(chore.assignee, self.naiara)
+        self.assertIsNone(chore.weekday)
+        blank = self.client.post(
+            f"/por-hacer/{chore.pk}/editar/",
+            {"editar-title": "  ", "editar-cadence": "hoy", "editar-assignee": ""},
+            follow=True,
+        )
+        self.assertContains(blank, "Escribe la tarea.")
+        chore.refresh_from_db()
+        self.assertEqual(chore.title, "Código del paquete")
+
+    def test_other_household_cannot_edit(self):
+        other = User.objects.create_user("vecino-editar", password="clave-segura-1")
+        house = create_household_for_user(other, "Otra")
+        chore = add_chore(house, "Regar", Chore.Cadence.TODAY, None, self.today)
+        denied = self.client.post(
+            f"/por-hacer/{chore.pk}/editar/",
+            {"editar-title": "Ajeno", "editar-cadence": "hoy", "editar-assignee": ""},
+        )
+        self.assertEqual(denied.status_code, 404)
+        chore.refresh_from_db()
+        self.assertEqual(chore.title, "Regar")
 
     def test_delete_removes_a_repeating_chore(self):
         chore = add_chore(self.household, "Regar las plantas", Chore.Cadence.DAILY, None, self.today)

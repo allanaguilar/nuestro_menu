@@ -3,27 +3,16 @@
 {% block content %}
 <div class="page-head">
   <h1>Por hacer</h1>
-  <p class="lede">Lo de casa, visible para los dos. Lo marcado queda hecho.</p>
 </div>
 
 <form class="chore-add" method="post">
   {% csrf_token %}
-  <label for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
+  <label class="sr-only" for="{{ form.title.id_for_label }}">{{ form.title.label }}</label>
   {{ form.title }}
+  <button class="button" type="submit">Añadir</button>
   {% if form.title.errors %}
   <p class="message message-error" role="alert">{{ form.title.errors.0 }}</p>
   {% endif %}
-  <div class="chore-choices">
-    <div>
-      <label for="{{ form.cadence.id_for_label }}">{{ form.cadence.label }}</label>
-      {{ form.cadence }}
-    </div>
-    <div>
-      <label for="{{ form.assignee.id_for_label }}">{{ form.assignee.label }}</label>
-      {{ form.assignee }}
-    </div>
-  </div>
-  <button class="button" type="submit">Añadir</button>
 </form>
 
 {% if hoy or cuando %}
@@ -63,6 +52,24 @@
       </form>
       <button type="button" class="button photo-modal-close">Cerrar</button>
     </div>
+  </div>
+</dialog>
+<dialog class="photo-modal" id="editar-modal" aria-labelledby="editar-modal-titulo">
+  <div class="photo-modal-card">
+    <h2 id="editar-modal-titulo">Editar</h2>
+    <form class="edit-task" id="editar-tarea" method="post" hx-boost="false">
+      {% csrf_token %}
+      <label for="{{ edit_form.title.id_for_label }}">{{ edit_form.title.label }}</label>
+      {{ edit_form.title }}
+      <label for="{{ edit_form.cadence.id_for_label }}">{{ edit_form.cadence.label }}</label>
+      {{ edit_form.cadence }}
+      <label for="{{ edit_form.assignee.id_for_label }}">{{ edit_form.assignee.label }}</label>
+      {{ edit_form.assignee }}
+      <div class="photo-modal-actions">
+        <button type="button" class="button button-ghost edit-modal-close">Cancelar</button>
+        <button class="button" type="submit">Guardar</button>
+      </div>
+    </form>
   </div>
 </dialog>
 {% endblock %}

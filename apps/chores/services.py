@@ -30,6 +30,25 @@ def add_chore(household, title, cadence, assignee, today):
     )
 
 
+def update_chore(chore, title, cadence, assignee, today):
+    if cadence not in Chore.Cadence.values:
+        raise ChoreError("Elige cuándo hay que hacerlo.")
+    if assignee and not HouseholdMembership.objects.filter(
+        household=chore.household, user=assignee
+    ).exists():
+        raise ChoreError("Esa persona no está en el hogar.")
+    chore.title = title
+    chore.cadence = cadence
+    chore.assignee = assignee
+    if cadence == Chore.Cadence.WEEKLY:
+        if chore.weekday is None:
+            chore.weekday = today.weekday()
+    else:
+        chore.weekday = None
+    chore.save(update_fields=["title", "cadence", "assignee", "weekday", "updated_at"])
+    return chore
+
+
 def set_chore_done(chore, today, done):
     chore.done_on = today if done else None
     chore.save(update_fields=["done_on", "updated_at"])

@@ -28,6 +28,9 @@
     {% endfor %}
   </div>
   {% endif %}
+  <button type="button" class="icon-btn chore-edit-open" data-edit="{% url 'chores:update' item.pk %}" data-title="{{ item.title }}" data-cadence="{{ item.cadence }}" data-assignee="{{ item.assignee_id|default:'' }}" aria-label="Editar {{ item.title }}">
+    {% include "includes/icon.html" with name="pencil" %}
+  </button>
   <button type="button" class="icon-btn chore-ask-open" aria-expanded="false" aria-controls="borrar-{{ item.pk }}" aria-label="Borrar {{ item.title }}">
     {% include "includes/icon.html" with name="trash" %}
   </button>

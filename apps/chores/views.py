@@ -9,12 +9,12 @@ from django.views.generic import TemplateView
 from apps.chores.forms import AddChoreForm
 from apps.chores.models import Chore, ChorePhoto
 from apps.chores.selectors import open_chores
-from apps.chores.services import ChoreError, add_chore, save_chore_photo, set_chore_done
+from apps.chores.services import ChoreError, add_chore, save_chore_photo, set_chore_done, update_chore
 from apps.core.mixins import HouseholdRequiredMixin, get_owned_or_404
 
 
-def chore_form(household, data=None):
-    form = AddChoreForm(data)
+def chore_form(household, data=None, prefix=None):
+    form = AddChoreForm(data, prefix=prefix)
     form.fields["assignee"].queryset = User.objects.filter(
         household_memberships__household=household
     ).order_by("household_memberships__joined_at")
@@ -29,6 +29,7 @@ class ChoreListView(HouseholdRequiredMixin, TemplateView):
         today = timezone.localdate()
         context["today"] = today
         context["form"] = context.get("form") or chore_form(self.request.household)
+        context["edit_form"] = chore_form(self.request.household, prefix="editar")
         context.update(open_chores(self.request.household, today))
         return context
 
@@ -39,6 +40,30 @@ class ChoreListView(HouseholdRequiredMixin, TemplateView):
         try:
             add_chore(
                 request.household,
+                form.cleaned_data["title"],
+                form.cleaned_data["cadence"] or Chore.Cadence.TODAY,
+                form.cleaned_data["assignee"],
+                timezone.localdate(),
+            )
+        except ChoreError as exc:
+            messages.error(request, str(exc))
+        return redirect("chores:list")
+
+
+class UpdateChoreView(HouseholdRequiredMixin, View):
+    def post(self, request, pk):
+        chore = get_owned_or_404(Chore.objects.filter(household=request.household), pk=pk)
+        form = chore_form(request.household, request.POST, prefix="editar")
+        if not form.is_valid() or not form.cleaned_data["cadence"]:
+            error = form.errors.as_data()
+            if error:
+                messages.error(request, next(iter(error.values()))[0].messages[0])
+            else:
+                messages.error(request, "Elige cuándo hay que hacerlo.")
+            return redirect("chores:list")
+        try:
+            update_chore(
+                chore,
                 form.cleaned_data["title"],
                 form.cleaned_data["cadence"],
                 form.cleaned_data["assignee"],
