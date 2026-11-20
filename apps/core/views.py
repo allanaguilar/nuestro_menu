@@ -1,3 +1,5 @@
+import time
+
 from django.conf import settings
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.db import connection
@@ -22,15 +24,39 @@ from apps.recipes.selectors import list_active_recipes, recipe_count
 
 class HealthView(View):
     def get(self, request):
-        db_ok = True
+        started = time.perf_counter()
         try:
             with connection.cursor() as cursor:
                 cursor.execute("SELECT 1")
                 cursor.fetchone()
-        except Exception:
-            db_ok = False
-        status = 200 if db_ok else 503
-        return JsonResponse({"status": "ok" if db_ok else "error", "database": db_ok}, status=status)
+        except Exception as exc:
+            return JsonResponse(
+                {
+                    "status": "error",
+                    "database": False,
+                    "database_ms": _elapsed_ms(started),
+                    "error": type(exc).__name__,
+                },
+                status=503,
+            )
+        return JsonResponse(
+            {
+                "status": "ok",
+                "database": True,
+                "database_ms": _elapsed_ms(started),
+            }
+        )
+
+
+class WakeView(View):
+    """Respuesta inmediata para que Render arranque sin abrir Neon."""
+
+    def get(self, request):
+        return JsonResponse({"status": "ok"})
+
+
+def _elapsed_ms(started):
+    return int((time.perf_counter() - started) * 1000)
 
 
 class HomeView(LoginRequiredMixin, View):

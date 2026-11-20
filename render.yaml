@@ -9,7 +9,7 @@ services:
     region: frankfurt
     buildCommand: "./build.sh"
     startCommand: "gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 1 --log-file -"
-    healthCheckPath: /health/
+    healthCheckPath: /ping/
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: config.settings.production

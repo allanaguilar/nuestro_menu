@@ -4,12 +4,13 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 from django.conf import settings
 
-from apps.core.views import HealthView, HomeView, OfflineView, ServiceWorkerView
+from apps.core.views import HealthView, HomeView, OfflineView, ServiceWorkerView, WakeView
 from apps.households.views import PasswordResetView, SignUpView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("health/", HealthView.as_view(), name="health"),
+    path("ping/", WakeView.as_view(), name="ping"),
     path("offline/", OfflineView.as_view(), name="offline"),
     path("sw.js", ServiceWorkerView.as_view(), name="service-worker"),
     path(

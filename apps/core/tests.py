@@ -21,7 +21,27 @@ class HealthTests(TestCase):
     def test_health_ok(self):
         response = self.client.get("/health/")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["status"], "ok")
+        body = response.json()
+        self.assertEqual(body["status"], "ok")
+        self.assertIs(body["database"], True)
+        self.assertGreaterEqual(body["database_ms"], 0)
+
+    def test_health_reports_a_database_failure(self):
+        with patch("apps.core.views.connection.cursor", side_effect=OSError("caido")):
+            response = self.client.get("/health/")
+        self.assertEqual(response.status_code, 503)
+        body = response.json()
+        self.assertEqual(body["status"], "error")
+        self.assertIs(body["database"], False)
+        self.assertEqual(body["error"], "OSError")
+        self.assertNotIn("caido", response.content.decode())
+
+    def test_ping_does_not_open_the_database(self):
+        with patch("apps.core.views.connection.cursor") as cursor:
+            response = self.client.get("/ping/")
+        cursor.assert_not_called()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"status": "ok"})
 
 
 class LoginRedirectTests(TestCase):
