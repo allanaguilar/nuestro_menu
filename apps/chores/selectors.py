@@ -1,6 +1,8 @@
 from datetime import timedelta
 
-from apps.chores.models import Chore
+from django.db.models import Prefetch
+
+from apps.chores.models import Chore, ChorePhoto
 
 
 def chore_is_visible(chore, today):
@@ -28,7 +30,14 @@ def chore_meta(chore):
 
 def open_chores(household, today):
     chores = list(
-        Chore.objects.filter(household=household).select_related("assignee")
+        Chore.objects.filter(household=household)
+        .select_related("assignee")
+        .prefetch_related(
+            Prefetch(
+                "photos",
+                queryset=ChorePhoto.objects.only("id", "chore_id", "created_at").order_by("created_at"),
+            )
+        )
     )
     stale = [
         chore.pk
@@ -45,6 +54,7 @@ def open_chores(household, today):
     for chore in visible:
         chore.meta = chore_meta(chore)
         chore.is_done = chore.done_on == today
+        chore.photo_list = list(chore.photos.all())
     hoy = [chore for chore in visible if chore.cadence != Chore.Cadence.SOMEDAY]
     cuando = [chore for chore in visible if chore.cadence == Chore.Cadence.SOMEDAY]
     pending = sum(1 for chore in visible if not chore.is_done)

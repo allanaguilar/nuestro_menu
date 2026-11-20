@@ -1,9 +1,12 @@
 from datetime import date, timedelta
+from io import BytesIO
 
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase
+from PIL import Image
 
-from apps.chores.models import Chore
+from apps.chores.models import Chore, ChorePhoto
 from apps.chores.selectors import chore_is_visible, open_chores
 from apps.chores.services import add_chore, set_chore_done
 from apps.households.services import accept_invite, create_household_for_user, create_invite
@@ -79,6 +82,58 @@ class ChoreTests(TestCase):
         self.assertRedirects(response, "/por-hacer/")
         self.assertFalse(Chore.objects.filter(pk=chore.pk).exists())
         self.assertNotContains(self.client.get("/por-hacer/"), "Regar las plantas")
+
+    def _png(self):
+        buffer = BytesIO()
+        Image.new("RGB", (16, 8), "red").save(buffer, format="PNG")
+        return SimpleUploadedFile("codigo.png", buffer.getvalue(), content_type="image/png")
+
+    def test_photo_is_saved_on_the_chore_and_shown_in_a_modal(self):
+        chore = add_chore(self.household, "Recoger un paquete", Chore.Cadence.TODAY, self.allan, self.today)
+        page = self.client.get("/por-hacer/")
+        self.assertContains(page, "Añadir foto a Recoger un paquete")
+        self.assertContains(page, 'id="foto-modal"')
+        saved = self.client.post(f"/por-hacer/{chore.pk}/foto/", {"foto": self._png()})
+        self.assertRedirects(saved, "/por-hacer/")
+        second = self.client.post(f"/por-hacer/{chore.pk}/foto/", {"foto": self._png()})
+        self.assertRedirects(second, "/por-hacer/")
+        photos = list(ChorePhoto.objects.filter(chore=chore).order_by("created_at"))
+        self.assertEqual(len(photos), 2)
+        self.assertEqual(photos[0].content_type, "image/jpeg")
+        self.assertLess(len(photos[0].content), 20000)
+        again = self.client.get("/por-hacer/")
+        self.assertContains(again, "Añadir foto a Recoger un paquete")
+        self.assertContains(again, "Borrar foto")
+        self.assertEqual(again.content.count(b"chore-photo-open"), 2)
+        image = self.client.get(f"/por-hacer/{chore.pk}/foto/{photos[0].pk}/")
+        self.assertEqual(image.status_code, 200)
+        self.assertEqual(image["Content-Type"], "image/jpeg")
+        self.assertTrue(image.content.startswith(b"\xff\xd8"))
+        removed = self.client.post(f"/por-hacer/{chore.pk}/foto/{photos[0].pk}/borrar/")
+        self.assertRedirects(removed, "/por-hacer/")
+        self.assertEqual(ChorePhoto.objects.filter(chore=chore).count(), 1)
+
+    def test_photo_rejects_a_file_that_is_not_an_image(self):
+        chore = add_chore(self.household, "Recoger un paquete", Chore.Cadence.TODAY, None, self.today)
+        upload = SimpleUploadedFile("nota.txt", b"no es una foto", content_type="text/plain")
+        response = self.client.post(f"/por-hacer/{chore.pk}/foto/", {"foto": upload}, follow=True)
+        self.assertRedirects(response, "/por-hacer/", fetch_redirect_response=False)
+        self.assertFalse(ChorePhoto.objects.filter(chore=chore).exists())
+        self.assertContains(response, "Esa foto no se puede usar.")
+
+    def test_other_household_cannot_see_the_photo(self):
+        other = User.objects.create_user("vecino", password="clave-segura-1")
+        house = create_household_for_user(other, "Otra")
+        chore = add_chore(house, "Recoger", Chore.Cadence.TODAY, None, self.today)
+        self.client.force_login(other)
+        self.client.post(f"/por-hacer/{chore.pk}/foto/", {"foto": self._png()})
+        photo = ChorePhoto.objects.get(chore=chore)
+        self.client.force_login(self.allan)
+        hidden = self.client.get(f"/por-hacer/{chore.pk}/foto/{photo.pk}/")
+        self.assertEqual(hidden.status_code, 404)
+        denied = self.client.post(f"/por-hacer/{chore.pk}/foto/{photo.pk}/borrar/")
+        self.assertEqual(denied.status_code, 404)
+        self.assertTrue(ChorePhoto.objects.filter(pk=photo.pk).exists())
 
     def test_other_household_cannot_toggle(self):
         other = User.objects.create_user("vecino", password="clave-segura-1")

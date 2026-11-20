@@ -47,3 +47,16 @@ class Chore(models.Model):
     def save(self, *args, **kwargs):
         self.title = re.sub(r"\s+", " ", (self.title or "").strip())
         super().save(*args, **kwargs)
+
+
+class ChorePhoto(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    chore = models.ForeignKey(Chore, on_delete=models.CASCADE, related_name="photos")
+    content = models.BinaryField()
+    content_type = models.CharField(max_length=40, default="image/jpeg")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "foto de la tarea"
+        verbose_name_plural = "fotos de las tareas"
+        ordering = ["created_at"]

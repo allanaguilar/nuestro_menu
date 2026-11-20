@@ -52,4 +52,17 @@
 {% else %}
 <p class="lede">Nada por hacer. Escribe lo que haya que hacer.</p>
 {% endif %}
+<dialog class="photo-modal" id="foto-modal" aria-labelledby="foto-modal-titulo">
+  <div class="photo-modal-card">
+    <h2 id="foto-modal-titulo"></h2>
+    <img id="foto-modal-img" alt="">
+    <div class="photo-modal-actions">
+      <form id="foto-modal-borrar" method="post" hx-boost="false">
+        {% csrf_token %}
+        <button class="button button-danger" type="submit" data-confirm="¿Borrar esta foto?">Borrar foto</button>
+      </form>
+      <button type="button" class="button photo-modal-close">Cerrar</button>
+    </div>
+  </div>
+</dialog>
 {% endblock %}

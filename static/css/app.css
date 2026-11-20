@@ -240,6 +240,7 @@ main > h1 + .lede, .hero .lede, .page-head .lede {
   .ai-wait p::before { animation: none; border-top-color: var(--olive); }
 }
 .button-accent { background: var(--terracotta); }
+.button-danger { background: var(--err); }
 .button-ghost { background: transparent; color: var(--olive-dark); border: 1px solid var(--line); box-shadow: none; }
 .button-ghost.is-pressed { background: var(--bg-accent); color: var(--ink); }
 .import-text { min-height: 16rem; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.95rem; }
@@ -613,14 +614,14 @@ textarea.recipe-text {
 }
 .chore-list { list-style: none; margin: 0; padding: 0; }
 .chore-item {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 0.35rem;
+  column-gap: 0.35rem;
   border-top: 1px solid var(--line);
 }
 .chore-ask {
-  flex: 1 0 100%;
+  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -633,11 +634,68 @@ textarea.recipe-text {
 .chore-ask form { display: flex; gap: 0.45rem; margin: 0; }
 .chore-ask .button { width: auto; min-height: 40px; padding: 0.35rem 0.9rem; }
 .chore-item form { margin: 0; }
-.chore-item form:first-child { flex: 1; min-width: 0; }
+.chore-item > form:first-child { grid-column: 1; grid-row: 1; min-width: 0; }
+.chore-photo-form { grid-column: 2; grid-row: 1; }
+.chore-item > .chore-ask-open { grid-column: 3; grid-row: 1; }
 .chore-item .check { margin: 0; width: 100%; min-width: 0; align-items: center; min-height: 52px; }
 .chore-copy { display: flex; flex-direction: column; min-width: 0; }
 .chore-meta { color: var(--muted); font-size: 0.86rem; line-height: 1.2; }
 .chore-item.is-done .chore-title { text-decoration: line-through; color: var(--muted); }
+.chore-body { min-width: 0; }
+.chore-photo-form { display: flex; align-items: center; }
+.chore-foto { position: relative; margin: 0; font-weight: 500; }
+.chore-foto input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+.chore-photos {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin: 0 0 0.55rem 2.15rem;
+}
+.chore-photo-open {
+  width: 72px;
+  height: 72px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-accent);
+  overflow: hidden;
+  cursor: pointer;
+}
+.chore-photo-open img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-modal {
+  width: min(24rem, calc(100% - 2rem));
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.photo-modal::backdrop { background: rgba(28, 36, 48, 0.46); }
+.photo-modal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.photo-modal-card h2 { margin: 0; font-size: 1.05rem; color: var(--olive-dark); }
+.photo-modal-card img { width: 100%; max-height: 60vh; object-fit: contain; border-radius: 12px; background: var(--bg-accent); }
+.photo-modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+}
+.photo-modal-actions form { display: flex; margin: 0; }
+.photo-modal-actions .button { width: 100%; }
 .pick-form select {
   width: 100%;
   min-width: 0;

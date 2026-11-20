@@ -1,14 +1,15 @@
 from django.contrib import messages
 from django.contrib.auth.models import User
+from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.utils import timezone
 from django.views import View
 from django.views.generic import TemplateView
 
 from apps.chores.forms import AddChoreForm
-from apps.chores.models import Chore
+from apps.chores.models import Chore, ChorePhoto
 from apps.chores.selectors import open_chores
-from apps.chores.services import ChoreError, add_chore, set_chore_done
+from apps.chores.services import ChoreError, add_chore, save_chore_photo, set_chore_done
 from apps.core.mixins import HouseholdRequiredMixin, get_owned_or_404
 
 
@@ -52,6 +53,41 @@ class ToggleChoreView(HouseholdRequiredMixin, View):
     def post(self, request, pk):
         chore = get_owned_or_404(Chore.objects.filter(household=request.household), pk=pk)
         set_chore_done(chore, timezone.localdate(), request.POST.get("done") == "1")
+        return redirect("chores:list")
+
+
+class ChorePhotoView(HouseholdRequiredMixin, View):
+    def post(self, request, pk):
+        chore = get_owned_or_404(Chore.objects.filter(household=request.household), pk=pk)
+        uploads = request.FILES.getlist("foto") or [None]
+        for uploaded in uploads:
+            try:
+                save_chore_photo(chore, uploaded)
+            except ChoreError as exc:
+                messages.error(request, str(exc))
+                break
+        return redirect("chores:list")
+
+
+class ChorePhotoFileView(HouseholdRequiredMixin, View):
+    def get(self, request, pk, photo_pk):
+        photo = get_owned_or_404(
+            ChorePhoto.objects.filter(chore__household=request.household, chore_id=pk),
+            pk=photo_pk,
+        )
+        response = HttpResponse(bytes(photo.content), content_type=photo.content_type)
+        response["Cache-Control"] = "private, max-age=3600"
+        response["X-Content-Type-Options"] = "nosniff"
+        return response
+
+
+class DeleteChorePhotoView(HouseholdRequiredMixin, View):
+    def post(self, request, pk, photo_pk):
+        photo = get_owned_or_404(
+            ChorePhoto.objects.filter(chore__household=request.household, chore_id=pk),
+            pk=photo_pk,
+        )
+        photo.delete()
         return redirect("chores:list")
 
 

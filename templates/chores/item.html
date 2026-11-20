@@ -1,15 +1,33 @@
 <li class="chore-item{% if item.is_done %} is-done{% endif %}">
   <form method="post" action="{% url 'chores:toggle' item.pk %}">
     {% csrf_token %}
-    <label class="check">
-      <input type="hidden" name="done" value="0">
-      <input type="checkbox" name="done" value="1"{% if item.is_done %} checked{% endif %} aria-label="{% if item.is_done %}Dejar {{ item.title }} pendiente{% else %}Marcar {{ item.title }} como hecha{% endif %}" onchange="this.form.requestSubmit()">
-      <span class="chore-copy">
-        <span class="chore-title">{{ item.title }}</span>
-        {% if item.meta %}<span class="chore-meta">{{ item.meta }}</span>{% endif %}
-      </span>
+    <div class="chore-body">
+      <label class="check">
+        <input type="hidden" name="done" value="0">
+        <input type="checkbox" name="done" value="1"{% if item.is_done %} checked{% endif %} aria-label="{% if item.is_done %}Dejar {{ item.title }} pendiente{% else %}Marcar {{ item.title }} como hecha{% endif %}" onchange="this.form.requestSubmit()">
+        <span class="chore-copy">
+          <span class="chore-title">{{ item.title }}</span>
+          {% if item.meta %}<span class="chore-meta">{{ item.meta }}</span>{% endif %}
+        </span>
+      </label>
+    </div>
+  </form>
+  <form class="chore-photo-form" method="post" action="{% url 'chores:photo' item.pk %}" enctype="multipart/form-data" hx-boost="false">
+    {% csrf_token %}
+    <label class="icon-btn chore-foto">
+      {% include "includes/icon.html" with name="camera" %}
+      <input class="chore-photo-input" type="file" accept="image/*" name="foto" aria-label="Añadir foto a {{ item.title }}">
     </label>
   </form>
+  {% if item.photo_list %}
+  <div class="chore-photos">
+    {% for photo in item.photo_list %}
+    <button type="button" class="chore-photo-open" data-src="{% url 'chores:photo_file' item.pk photo.pk %}" data-delete="{% url 'chores:photo_delete' item.pk photo.pk %}" data-title="{{ item.title }}">
+      <img src="{% url 'chores:photo_file' item.pk photo.pk %}" alt="Foto de {{ item.title }}">
+    </button>
+    {% endfor %}
+  </div>
+  {% endif %}
   <button type="button" class="icon-btn chore-ask-open" aria-expanded="false" aria-controls="borrar-{{ item.pk }}" aria-label="Borrar {{ item.title }}">
     {% include "includes/icon.html" with name="trash" %}
   </button>

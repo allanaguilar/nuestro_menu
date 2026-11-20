@@ -2,6 +2,47 @@
   if (window.__nuestroMenuReady) return;
   window.__nuestroMenuReady = true;
 
+  document.addEventListener("change", function (event) {
+    const input = event.target.closest && event.target.closest(".chore-photo-input");
+    if (!input || !input.files || !input.files[0]) return;
+    input.form.requestSubmit();
+  });
+
+  document.addEventListener("submit", function (event) {
+    const form = event.target;
+    if (!form.classList || !form.classList.contains("chore-photo-form")) return;
+    const input = form.querySelector(".chore-photo-input");
+    const files = input && input.files ? Array.prototype.slice.call(input.files) : [];
+    if (!files.length || typeof createImageBitmap !== "function") return;
+    event.preventDefault();
+    const token = form.querySelector("[name=csrfmiddlewaretoken]").value;
+    const shrink = function (file) {
+      return createImageBitmap(file).then(function (bitmap) {
+        const edge = Math.max(bitmap.width, bitmap.height);
+        const scale = edge > 1280 ? 1280 / edge : 1;
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+        canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+        canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close();
+        return new Promise(function (resolve) {
+          canvas.toBlob(function (blob) { resolve(blob || file); }, "image/jpeg", 0.82);
+        });
+      }).catch(function () { return file; });
+    };
+    Promise.all(files.map(shrink)).then(function (blobs) {
+      const body = new FormData();
+      body.append("csrfmiddlewaretoken", token);
+      blobs.forEach(function (blob) { body.append("foto", blob, "foto.jpg"); });
+      input.value = "";
+      return fetch(form.action, { method: "POST", body: body, credentials: "same-origin" });
+    }).then(function () {
+      window.location.assign("/por-hacer/");
+    }).catch(function () {
+      form.submit();
+    });
+  });
+
   document.addEventListener("click", function (event) {
     const clear = event.target.closest(".search-clear");
     if (clear) {
@@ -107,6 +148,25 @@
       const open = panel.hidden;
       panel.hidden = !open;
       accountBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      return;
+    }
+    const photoOpen = event.target.closest(".chore-photo-open");
+    if (photoOpen) {
+      const dialog = document.getElementById("foto-modal");
+      if (!dialog) return;
+      const title = photoOpen.getAttribute("data-title") || "";
+      dialog.querySelector("h2").textContent = title;
+      const image = dialog.querySelector("img");
+      image.src = photoOpen.getAttribute("data-src");
+      image.alt = "Foto de " + title;
+      const remove = document.getElementById("foto-modal-borrar");
+      if (remove) remove.action = photoOpen.getAttribute("data-delete");
+      dialog.showModal();
+      return;
+    }
+    if (event.target.closest(".photo-modal-close") || event.target.id === "foto-modal") {
+      const dialog = document.getElementById("foto-modal");
+      if (dialog && dialog.open) dialog.close();
       return;
     }
     const askOpen = event.target.closest(".chore-ask-open");

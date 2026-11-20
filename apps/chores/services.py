@@ -1,5 +1,13 @@
-from apps.chores.models import Chore
+from io import BytesIO
+
+from PIL import Image, UnidentifiedImageError
+
+from apps.chores.models import Chore, ChorePhoto
 from apps.households.models import HouseholdMembership
+
+MAX_PHOTO_BYTES = 10 * 1024 * 1024
+MAX_PHOTO_EDGE = 1280
+MAX_PHOTOS = 12
 
 
 class ChoreError(Exception):
@@ -26,3 +34,32 @@ def set_chore_done(chore, today, done):
     chore.done_on = today if done else None
     chore.save(update_fields=["done_on", "updated_at"])
     return chore
+
+
+def save_chore_photo(chore, uploaded):
+    if uploaded is None or not getattr(uploaded, "size", 0):
+        raise ChoreError("Elige una foto.")
+    if chore.photos.count() >= MAX_PHOTOS:
+        raise ChoreError("Esta tarea ya tiene 12 fotos.")
+    if uploaded.size > MAX_PHOTO_BYTES:
+        raise ChoreError("La foto es demasiado grande.")
+    try:
+        content = _jpeg_bytes(uploaded.read())
+    except (UnidentifiedImageError, OSError, ValueError) as exc:
+        raise ChoreError("Esa foto no se puede usar.") from exc
+    return ChorePhoto.objects.create(
+        chore=chore,
+        content=content,
+        content_type="image/jpeg",
+    )
+
+
+def _jpeg_bytes(raw):
+    with Image.open(BytesIO(raw)) as image:
+        image.load()
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+        image.thumbnail((MAX_PHOTO_EDGE, MAX_PHOTO_EDGE))
+        output = BytesIO()
+        image.save(output, format="JPEG", quality=82, optimize=True)
+    return output.getvalue()
