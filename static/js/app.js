@@ -257,6 +257,7 @@
   document.addEventListener("submit", function (event) {
     const form = event.target;
     if (!(form instanceof HTMLFormElement)) return;
+    if (form.id === "house-form") return;
     if (form.classList.contains("shop-add")) {
       event.preventDefault();
       event.stopPropagation();
@@ -1598,7 +1599,9 @@
     }).catch(function () {
       houseError("No hay conexión con la casa. Prueba otra vez.");
     }).then(function () {
+      form.classList.remove("is-loading");
       if (button) button.disabled = false;
+      if (input) input.focus();
     });
   }
 

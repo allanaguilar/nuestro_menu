@@ -1033,6 +1033,7 @@ form.is-loading { opacity: 0.65; pointer-events: none; }
   flex-direction: column;
   gap: 0.45rem;
   max-height: min(70vh, 34rem);
+  overflow: hidden;
   padding: 0.85rem 0.9rem 0.9rem;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -1040,7 +1041,7 @@ form.is-loading { opacity: 0.65; pointer-events: none; }
   box-shadow: var(--shadow);
 }
 .house-sheet[hidden] { display: none; }
-.house-sheet-bar { display: flex; align-items: center; justify-content: space-between; }
+.house-sheet-bar { display: flex; align-items: center; justify-content: space-between; flex: 0 0 auto; }
 .house-sheet-bar p { margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--olive-dark); }
 .house-sheet-bar button {
   min-height: 40px;
@@ -1054,9 +1055,10 @@ form.is-loading { opacity: 0.65; pointer-events: none; }
 }
 .house-log {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 0.35rem;
-  min-height: 8rem;
+  min-height: 0;
   overflow: auto;
 }
 .house-empty { margin: 0; color: var(--muted); }
@@ -1085,9 +1087,9 @@ form.is-loading { opacity: 0.65; pointer-events: none; }
   background: var(--bg-accent);
   font-size: 0.92rem;
 }
-.house-error { margin: 0; color: var(--err); }
+.house-error { margin: 0; color: var(--err); flex: 0 0 auto; }
 .house-error[hidden] { display: none; }
-.house-compose { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.45rem; }
+.house-compose { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.45rem; flex: 0 0 auto; }
 .house-compose input { min-width: 0; }
 .house-compose button { width: auto; }
 .house-fab:focus-visible, .house-sheet button:focus-visible, .house-sheet input:focus-visible {
