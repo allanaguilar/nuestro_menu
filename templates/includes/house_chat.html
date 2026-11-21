@@ -1,0 +1,21 @@
+<button type="button" class="house-fab" id="house-open" aria-expanded="false" aria-controls="house-sheet">
+  {% include "includes/icon.html" with name="chat" %}
+  <span class="sr-only">Hablar con casa</span>
+</button>
+<div class="house-dim" id="house-dim" hidden></div>
+<section class="house-sheet" id="house-sheet" hidden aria-label="Casa" data-who="{{ user.first_name|default:user.username }}">
+  <div class="house-sheet-bar">
+    <p>Casa</p>
+    <button type="button" id="house-close">Cerrar</button>
+  </div>
+  <div class="house-log" id="house-log" aria-live="polite">
+    <p class="house-empty" id="house-empty">Pregunta por el menú, la compra o los pendientes.</p>
+  </div>
+  <p class="house-error" id="house-error" hidden></p>
+  <form class="house-compose" id="house-form" hx-boost="false" action="{% url 'core:house-chat' %}" method="post">
+    {% csrf_token %}
+    <label class="sr-only" for="house-msg">Mensaje</label>
+    <input id="house-msg" name="text" type="text" maxlength="1000" placeholder="Añade pan a la compra" autocomplete="off">
+    <button type="submit">Enviar</button>
+  </form>
+</section>

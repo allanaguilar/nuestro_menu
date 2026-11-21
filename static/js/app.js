@@ -1507,6 +1507,133 @@
   });
   watchShop();
   watchPush();
+  bindHouseChat();
+
+  function bindHouseChat() {
+    document.addEventListener("click", function (event) {
+      const open = event.target.closest && event.target.closest("#house-open");
+      const close = event.target.closest && event.target.closest("#house-close");
+      const dim = event.target.closest && event.target.closest("#house-dim");
+      if (open) {
+        event.preventDefault();
+        setHouseOpen(true);
+        return;
+      }
+      if (close || dim) {
+        event.preventDefault();
+        setHouseOpen(false);
+      }
+    });
+    document.addEventListener("submit", function (event) {
+      const form = event.target;
+      if (!form || form.id !== "house-form") return;
+      event.preventDefault();
+      sendHouse(form);
+    });
+  }
+
+  function setHouseOpen(next) {
+    const sheet = document.getElementById("house-sheet");
+    const dim = document.getElementById("house-dim");
+    const open = document.getElementById("house-open");
+    if (!sheet || !dim || !open) return;
+    sheet.hidden = !next;
+    dim.hidden = !next;
+    open.hidden = next;
+    open.setAttribute("aria-expanded", next ? "true" : "false");
+    if (next) {
+      const input = document.getElementById("house-msg");
+      if (input) input.focus();
+      if (sheet.dataset.loaded !== "1") loadHouse();
+    } else {
+      open.focus();
+    }
+  }
+
+  function loadHouse() {
+    const sheet = document.getElementById("house-sheet");
+    if (!sheet) return;
+    sheet.dataset.loaded = "1";
+    fetch("/casa/", { credentials: "same-origin", headers: { Accept: "application/json" } })
+      .then(function (response) { return response.ok ? response.json() : null; })
+      .then(function (data) {
+        if (!data || !data.messages) return;
+        data.messages.forEach(addHouseMessage);
+      })
+      .catch(function () {
+        houseError("No hay conexión con la casa. Prueba otra vez.");
+      });
+  }
+
+  function sendHouse(form) {
+    const input = document.getElementById("house-msg");
+    const text = input ? input.value.trim() : "";
+    if (!text) {
+      houseError("Escribe lo que quieres preguntar.");
+      return;
+    }
+    houseError("");
+    const button = form.querySelector("button[type=submit]");
+    if (button) button.disabled = true;
+    const body = new FormData();
+    body.append("csrfmiddlewaretoken", csrfToken());
+    body.append("text", text);
+    fetch(form.action || "/casa/", {
+      method: "POST",
+      body: body,
+      credentials: "same-origin",
+      headers: { Accept: "application/json" },
+    }).then(function (response) {
+      return response.json().then(function (data) {
+        return { ok: response.ok, data: data };
+      });
+    }).then(function (result) {
+      if (!result.ok) {
+        houseError((result.data && result.data.error) || "La casa no ha podido contestar. Prueba otra vez.");
+        return;
+      }
+      input.value = "";
+      addHouseMessage(result.data.user);
+      addHouseMessage(result.data.reply);
+    }).catch(function () {
+      houseError("No hay conexión con la casa. Prueba otra vez.");
+    }).then(function () {
+      if (button) button.disabled = false;
+    });
+  }
+
+  function addHouseMessage(message) {
+    const log = document.getElementById("house-log");
+    const sheet = document.getElementById("house-sheet");
+    const empty = document.getElementById("house-empty");
+    if (!log || !message || !message.body) return;
+    if (empty) empty.hidden = true;
+    const turn = document.createElement("div");
+    turn.className = "house-turn";
+    const who = document.createElement("p");
+    who.className = "house-who";
+    who.textContent = message.role === "user" ? ((sheet && sheet.dataset.who) || "Tú") : "Casa";
+    const bubble = document.createElement("p");
+    bubble.className = "house-bubble" + (message.role === "user" ? " house-mine" : "");
+    bubble.textContent = message.body;
+    turn.appendChild(who);
+    turn.appendChild(bubble);
+    (message.receipts || []).forEach(function (line) {
+      const pill = document.createElement("p");
+      pill.className = "house-receipt";
+      pill.textContent = line;
+      turn.appendChild(pill);
+    });
+    log.appendChild(turn);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function houseError(text) {
+    const error = document.getElementById("house-error");
+    if (!error) return;
+    error.textContent = text || "";
+    error.hidden = !text;
+  }
   document.addEventListener("htmx:afterSettle", function () {
     watchShop();
     watchPush();

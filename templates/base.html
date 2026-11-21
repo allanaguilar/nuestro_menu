@@ -13,7 +13,7 @@
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/fontawesome.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/solid.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/fontawesome/css/regular.min.css' %}">
-    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=75">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}?v=78">
   </head>
   {% with ns=request.resolver_match.namespace un=request.resolver_match.url_name %}
   <body hx-boost="true"{% if user.is_authenticated and request.household %} data-home="{{ request.household.id }}"{% endif %}>
@@ -72,6 +72,9 @@
       {% endif %}
       {% block content %}{% endblock %}
     </main>
+    {% if user.is_authenticated and current_household %}
+    {% include "includes/house_chat.html" %}
+    {% endif %}
     {% if user.is_authenticated %}
     <nav class="tabbar" aria-label="Accesos">
       {% with ns=request.resolver_match.namespace name=request.resolver_match.url_name %}
@@ -84,7 +87,7 @@
     </nav>
     {% endif %}
     <script src="{% static 'js/htmx.min.js' %}" defer></script>
-    <script src="{% static 'js/app.js' %}?v=50" defer></script>
+    <script src="{% static 'js/app.js' %}?v=52" defer></script>
   </body>
   {% endwith %}
 </html>

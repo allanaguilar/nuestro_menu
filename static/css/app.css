@@ -997,3 +997,104 @@ form.is-loading { opacity: 0.65; pointer-events: none; }
   .toolbar { gap: 0.5rem; }
   .pref-form .button { width: 100%; }
 }
+
+.house-fab {
+  position: fixed;
+  right: 1rem;
+  bottom: 1.25rem;
+  z-index: 8;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--olive);
+  color: #fff;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+.house-fab[hidden] { display: none; }
+.house-fab .icon { color: #fff; font-size: 1.25rem; }
+.house-dim {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  background: rgba(28, 36, 48, 0.35);
+}
+.house-dim[hidden] { display: none; }
+.house-sheet {
+  position: fixed;
+  right: 1rem;
+  bottom: 5.5rem;
+  z-index: 9;
+  width: min(400px, calc(100% - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: min(70vh, 34rem);
+  padding: 0.85rem 0.9rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+.house-sheet[hidden] { display: none; }
+.house-sheet-bar { display: flex; align-items: center; justify-content: space-between; }
+.house-sheet-bar p { margin: 0; font-size: 1.15rem; font-weight: 700; color: var(--olive-dark); }
+.house-sheet-bar button {
+  min-height: 40px;
+  padding: 0.35rem 0.85rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.house-log {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-height: 8rem;
+  overflow: auto;
+}
+.house-empty { margin: 0; color: var(--muted); }
+.house-empty[hidden] { display: none; }
+.house-turn { display: flex; flex-direction: column; gap: 0.3rem; }
+.house-who { margin: 0.35rem 0 0; color: var(--muted); font-size: 0.85rem; }
+.house-bubble {
+  max-width: 88%;
+  margin: 0;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--bg);
+}
+.house-mine {
+  align-self: flex-end;
+  border-color: transparent;
+  background: var(--olive);
+  color: #fff;
+}
+.house-receipt {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  background: var(--bg-accent);
+  font-size: 0.92rem;
+}
+.house-error { margin: 0; color: var(--err); }
+.house-error[hidden] { display: none; }
+.house-compose { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.45rem; }
+.house-compose input { min-width: 0; }
+.house-compose button { width: auto; }
+.house-fab:focus-visible, .house-sheet button:focus-visible, .house-sheet input:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+@media (max-width: 800px) {
+  .house-fab { bottom: calc(76px + env(safe-area-inset-bottom) + 22px); }
+  .house-sheet { bottom: calc(76px + env(safe-area-inset-bottom) + 14px); }
+}

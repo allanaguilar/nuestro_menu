@@ -181,32 +181,11 @@ def interpret_recipe(text: str, model: str | None = None) -> dict:
         },
     }
     model_name = (model or settings.GEMINI_MODEL or "").strip()
-    request = Request(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{quote(model_name, safe='')}:generateContent",
-        data=json.dumps(payload).encode("utf-8"),
-        headers={
-            "accept": "application/json",
-            "content-type": "application/json",
-            "x-goog-api-key": settings.GEMINI_API_KEY,
-        },
-        method="POST",
-    )
+    raw = _generate(model_name, payload, "Lectura de receta fallida")
     try:
-        with urlopen(request, timeout=_TIMEOUT) as response:
-            raw = response.read()
-    except (HTTPError, URLError, TimeoutError, OSError) as exc:
-        error = _note_model_use(model_name, exc)
-        message = _connection_message(exc, error)
-        logger.error("Lectura de receta fallida: %s", message)
-        raise RecipeReadError(message) from exc
-    else:
-        record_gemini_use(model_name, counted=True)
-    try:
-        body = json.loads(raw)
-        content = body["candidates"][0]["content"]["parts"][0]["text"]
-        data = json.loads(content)
+        data = _json_object(raw)
         name = " ".join(str(data.get("name") or "").split())
-    except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+    except (KeyError, TypeError, ValueError) as exc:
         raise RecipeReadError(
             "La IA no ha devuelto una receta que se pueda usar. Prueba con otro texto."
         ) from exc
@@ -223,3 +202,57 @@ def interpret_recipe(text: str, model: str | None = None) -> dict:
         "ingredients": str(data.get("ingredients") or "").strip(),
         "steps": str(data.get("steps") or "").strip(),
     }
+
+
+def ask_model(model, system, contents, schema):
+    if not settings.GEMINI_API_KEY:
+        raise RecipeReadError("Falta la clave de la IA.")
+    model_name = (model or settings.GEMINI_MODEL or "").strip()
+    payload = {
+        "systemInstruction": {"parts": [{"text": system}]},
+        "contents": [
+            {"role": role, "parts": [{"text": text}]}
+            for role, text in contents
+        ],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "responseSchema": schema,
+        },
+    }
+    raw = _generate(model_name, payload, "Conversación de casa fallida")
+    try:
+        return _json_object(raw)
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RecipeReadError("La IA no ha podido contestar. Prueba otra vez.") from exc
+
+
+def _generate(model_name, payload, failure_label):
+    request = Request(
+        f"https://generativelanguage.googleapis.com/v1beta/models/{quote(model_name, safe='')}:generateContent",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "accept": "application/json",
+            "content-type": "application/json",
+            "x-goog-api-key": settings.GEMINI_API_KEY,
+        },
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=_TIMEOUT) as response:
+            raw = response.read()
+    except (HTTPError, URLError, TimeoutError, OSError) as exc:
+        error = _note_model_use(model_name, exc)
+        message = _connection_message(exc, error)
+        logger.error("%s: %s", failure_label, message)
+        raise RecipeReadError(message) from exc
+    record_gemini_use(model_name, counted=True)
+    return raw
+
+
+def _json_object(raw):
+    body = json.loads(raw)
+    content = body["candidates"][0]["content"]["parts"][0]["text"]
+    data = json.loads(content)
+    if not isinstance(data, dict):
+        raise TypeError("object")
+    return data

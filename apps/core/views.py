@@ -12,8 +12,10 @@ from django.views.generic import TemplateView
 from apps.baby.selectors import baby_meals_on
 from apps.chores.selectors import open_chores
 from apps.shopping.selectors import pending_count
+from apps.core.house_chat import house_messages, message_payload, speak
 from apps.core.mixins import HouseholdRequiredMixin
 from apps.core.summary import summary_for
+from apps.recipes.ai import RecipeReadError
 from apps.core.week import monday_of, weekday_label, weekday_short
 from apps.households.selectors import get_user_membership
 from apps.meal_plans.forms import ChangeDishForm
@@ -143,6 +145,22 @@ class ServiceWorkerView(View):
 
 class InstallView(HouseholdRequiredMixin, TemplateView):
     template_name = "core/install.html"
+
+
+class HouseChatView(HouseholdRequiredMixin, View):
+    def get(self, request):
+        rows = house_messages(request.household, request.user).order_by("created_at")
+        return JsonResponse({"messages": [message_payload(row) for row in rows]})
+
+    def post(self, request):
+        text = request.POST.get("text") or ""
+        if not " ".join(text.split()):
+            return JsonResponse({"error": "Escribe lo que quieres preguntar."}, status=400)
+        try:
+            result = speak(request.household, request.user, text)
+        except RecipeReadError as exc:
+            return JsonResponse({"error": str(exc)}, status=502)
+        return JsonResponse(result)
 
 
 class SummaryView(HouseholdRequiredMixin, TemplateView):

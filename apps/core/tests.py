@@ -7,9 +7,13 @@ from urllib.error import HTTPError
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.test import TestCase, override_settings
+from django.utils import timezone
 
+from apps.chores.models import Chore
 from apps.core.mail import EmailDeliveryError
-from apps.core.week import weekday_short
+from apps.core.models import HouseMessage
+from apps.core.week import monday_of, weekday_short
+from apps.households.models import HouseholdMembership
 from apps.households.services import create_household_for_user
 from apps.meal_plans.models import MealPlan, MealPlanEntry
 from apps.recipes.models import Recipe
@@ -323,6 +327,181 @@ class SummaryTests(TestCase):
         self.client.logout()
         response = self.client.get("/resumen/")
         self.assertEqual(response.status_code, 302)
+
+
+class HouseChatTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            "allan", password="clave-segura-1", first_name="Allan"
+        )
+        self.naiara = User.objects.create_user(
+            "naiara", password="clave-segura-1", first_name="Naiara"
+        )
+        self.other = User.objects.create_user(
+            "vecino", password="clave-segura-1", first_name="Vecino"
+        )
+        self.household = create_household_for_user(self.user, "Allan&Naiara")
+        HouseholdMembership.objects.create(
+            household=self.household,
+            user=self.naiara,
+            role=HouseholdMembership.Role.MEMBER,
+        )
+        self.other_home = create_household_for_user(self.other, "Otra")
+        self.recipe = Recipe.objects.create(
+            household=self.household, name="Lentejas", category=Recipe.Category.LEGUMBRES
+        )
+        Recipe.objects.create(
+            household=self.other_home, name="Secreto secreto", category=Recipe.Category.CARNE
+        )
+        today = timezone.localdate()
+        plan = MealPlan.objects.create(
+            household=self.household,
+            week_start=monday_of(today),
+            status=MealPlan.Status.APPROVED,
+            created_by=self.user,
+        )
+        MealPlanEntry.objects.create(meal_plan=plan, day=today, recipe=self.recipe)
+        self.client.login(username="allan", password="clave-segura-1")
+
+    def _body(self, **payload):
+        data = {"reply": "Hoy toca lentejas.", "actions": []}
+        data.update(payload)
+        return json.dumps(
+            {"candidates": [{"content": {"parts": [{"text": json.dumps(data)}]}}]}
+        ).encode()
+
+    def test_home_has_the_floating_button(self):
+        page = self.client.get("/inicio/")
+        self.assertContains(page, "Hablar con casa")
+        self.assertContains(page, 'id="house-open"')
+        self.assertNotContains(page, ">Casa</span>")
+
+    def test_empty_message_is_rejected(self):
+        response = self.client.post("/casa/", {"text": "   "})
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(HouseMessage.objects.count(), 0)
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba", GEMINI_MODEL="gemini-3.5-flash")
+    def test_answer_uses_this_household_and_saves_the_thread(self):
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = self._body()
+            response = self.client.post("/casa/", {"text": "Qué comemos hoy"})
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["reply"]["body"], "Hoy toca lentejas.")
+        sent = json.loads(urlopen.call_args.args[0].data.decode())
+        question = sent["contents"][-1]["parts"][0]["text"]
+        self.assertIn("Lentejas", question)
+        self.assertNotIn("Secreto secreto", question)
+        self.assertIn("models/gemini-3.5-flash:generateContent", urlopen.call_args.args[0].full_url)
+        self.assertEqual(HouseMessage.objects.filter(user=self.user).count(), 2)
+        self.client.logout()
+        self.client.login(username="naiara", password="clave-segura-1")
+        history = self.client.get("/casa/")
+        self.assertEqual(history.json()["messages"], [])
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_add_to_the_shopping_list_and_mark_a_chore(self):
+        Chore.objects.create(household=self.household, title="Colada", cadence=Chore.Cadence.TODAY)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = self._body(
+                reply="Leche añadida a la lista.",
+                actions=[{"kind": "add_shopping", "name": "Leche"}],
+            )
+            added = self.client.post("/casa/", {"text": "Añade leche"})
+            urlopen.return_value.__enter__.return_value.read.return_value = self._body(
+                reply="Colada marcada como hecha.",
+                actions=[{"kind": "complete_chore", "name": "Colada"}],
+            )
+            done = self.client.post("/casa/", {"text": "La colada ya está"})
+        self.assertEqual(added.json()["reply"]["receipts"], ["Lista de compra · Leche"])
+        self.assertTrue(
+            ShoppingItem.objects.filter(household=self.household, name="Leche", added_by=self.user).exists()
+        )
+        self.assertEqual(done.json()["reply"]["receipts"], ["Por hacer · Colada"])
+        self.assertEqual(Chore.objects.get(title="Colada").done_on, timezone.localdate())
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_ambiguous_chore_is_not_marked(self):
+        Chore.objects.create(household=self.household, title="Colada blanca")
+        Chore.objects.create(household=self.household, title="Colada oscura")
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = self._body(
+                reply="Marco la colada.",
+                actions=[{"kind": "complete_chore", "name": "colada"}],
+            )
+            response = self.client.post("/casa/", {"text": "La colada ya está"})
+        self.assertIn("varias tareas", response.json()["reply"]["body"])
+        self.assertEqual(response.json()["reply"]["receipts"], [])
+        self.assertFalse(Chore.objects.exclude(done_on=None).exists())
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_create_a_recipe_for_someone_in_the_house(self):
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = self._body(
+                reply="Tortilla guardada.",
+                actions=[
+                    {
+                        "kind": "create_recipe",
+                        "name": "Tortilla de patata",
+                        "category": "huevos",
+                        "ingredients": "4 huevos\n2 patatas",
+                        "steps": "Freír la patata y cuajar.",
+                        "servings": 2,
+                    },
+                    {
+                        "kind": "add_chore",
+                        "name": "Bajar la basura",
+                        "cadence": "hoy",
+                        "assignee": "Naiara",
+                    },
+                ],
+            )
+            response = self.client.post("/casa/", {"text": "Guarda la tortilla y apunta la basura"})
+        recipe = Recipe.objects.get(household=self.household, name="Tortilla de patata")
+        self.assertEqual(recipe.category, Recipe.Category.HUEVOS)
+        self.assertEqual(recipe.servings, 2)
+        chore = Chore.objects.get(title="Bajar la basura")
+        self.assertEqual(chore.assignee, self.naiara)
+        self.assertEqual(
+            response.json()["reply"]["receipts"],
+            ["Recetario · Tortilla de patata", "Por hacer · Bajar la basura"],
+        )
+        self.assertFalse(Recipe.objects.filter(household=self.other_home, name="Tortilla de patata").exists())
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_quota_error_changes_nothing(self):
+        body = json.dumps(
+            {
+                "error": {
+                    "status": "RESOURCE_EXHAUSTED",
+                    "details": [
+                        {"retryDelay": "65641s"},
+                        {
+                            "violations": [
+                                {
+                                    "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+                                    "quotaValue": "20",
+                                }
+                            ]
+                        },
+                    ],
+                }
+            }
+        ).encode()
+        error = HTTPError(
+            "https://generativelanguage.googleapis.com/",
+            429,
+            "Too Many Requests",
+            hdrs=None,
+            fp=BytesIO(body),
+        )
+        with patch("apps.recipes.ai.urlopen", side_effect=error):
+            response = self.client.post("/casa/", {"text": "Añade pan"})
+        self.assertEqual(response.status_code, 502)
+        self.assertIn("20 lecturas", response.json()["error"])
+        self.assertEqual(ShoppingItem.objects.count(), 0)
+        self.assertEqual(HouseMessage.objects.count(), 0)
 
 
 class WeekdayShortTests(TestCase):
