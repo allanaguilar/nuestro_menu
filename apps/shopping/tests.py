@@ -6,6 +6,7 @@ from django.test import TestCase, override_settings
 
 from apps.households.models import HouseholdMembership
 from apps.households.services import create_household_for_user
+from apps.recipes.models import Recipe
 from apps.shopping.models import ShoppingItem, ShoppingPushSubscription
 
 
@@ -34,7 +35,10 @@ class ShoppingListTests(TestCase):
         self.assertRedirects(response, "/lista/")
         page = self.client.get("/lista/")
         self.assertContains(page, "Leche")
-        self.assertContains(page, "Sin pasillo")
+        self.assertContains(page, 'aria-label="Editar Leche"')
+        self.assertContains(page, 'aria-label="Mover Leche"')
+        self.assertNotContains(page, "Sin pasillo")
+        self.assertNotContains(page, "Verduras")
         self.assertLess(page.content.find(b"shop-add"), page.content.find(b"shop-board"))
         self.assertContains(page, "Queda 1")
         self.assertEqual(ShoppingItem.objects.get().normalized_name, "leche")
@@ -56,14 +60,9 @@ class ShoppingListTests(TestCase):
     def test_aisle_groups_the_item_and_check_moves_it_to_the_cart(self):
         self.client.post("/lista/anadir/", {"name": "Tomates"})
         item = ShoppingItem.objects.get()
-        moved = self.client.post(f"/lista/{item.pk}/pasillo/", {"aisle": "verduras"})
-        self.assertRedirects(moved, "/lista/")
         page = self.client.get("/lista/")
-        self.assertContains(page, 'id="pasillo-verduras"')
-        self.assertContains(page, "fa-carrot")
-        self.assertContains(page, "Verduras")
-        self.assertContains(page, 'value="verduras" selected')
-        self.assertNotContains(page, "Frescos")
+        self.assertContains(page, "Tomates")
+        self.assertNotContains(page, "fa-carrot")
         checked = self.client.post(f"/lista/{item.pk}/hecho/", {"done": "1"})
         self.assertRedirects(checked, "/lista/")
         cart = self.client.get("/lista/")
@@ -89,14 +88,6 @@ class ShoppingListTests(TestCase):
     def test_check_and_aisle_answer_without_leaving_the_page(self):
         self.client.post("/lista/anadir/", {"name": "Tomates"})
         item = ShoppingItem.objects.get()
-        moved = self.client.post(
-            f"/lista/{item.pk}/pasillo/",
-            {"aisle": "verduras"},
-            HTTP_X_SHOP="1",
-        )
-        self.assertEqual(moved.status_code, 200)
-        self.assertContains(moved, "fa-carrot", html=False)
-        self.assertIn("Verduras", moved.json()["html"])
         checked = self.client.post(
             f"/lista/{item.pk}/hecho/",
             {"done": "1"},
@@ -216,7 +207,8 @@ class ShoppingListTests(TestCase):
         item = ShoppingItem.objects.get()
         self.assertEqual(response.json()["created_id"], str(item.pk))
         self.assertIn("Leche", response.json()["html"])
-        self.assertIn('data-aisle="none"', response.json()["html"])
+        self.assertIn("Mover Leche", response.json()["html"])
+        self.assertNotIn("data-aisle", response.json()["html"])
 
     def test_phone_duplicate_points_at_the_existing_item(self):
         self.client.post("/lista/anadir/", {"name": "Leche"})
@@ -244,6 +236,74 @@ class ShoppingListTests(TestCase):
         page = self.client.get("/lista/")
         item = ShoppingItem.objects.get()
         self.assertContains(page, f'data-id="{item.pk}"')
-        self.assertContains(page, 'data-aisle="none"')
+        self.assertContains(page, 'aria-label="Editar Leche"')
         self.assertContains(page, 'id="shop-offline"')
         self.assertContains(page, f'data-home="{self.household.id}"')
+
+    def test_recipe_ingredients_land_on_the_list_once(self):
+        recipe = Recipe.objects.create(
+            household=self.household,
+            name="Lentejas",
+            ingredients="200 g de lentejas\n1 cebolla\n\n1 cebolla",
+        )
+        self.client.post("/lista/anadir/", {"name": "Cebolla"})
+        response = self.client.post(
+            f"/lista/desde-receta/{recipe.pk}/",
+            {"next": "/inicio/"},
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/inicio/")
+        follow = self.client.get("/inicio/")
+        self.assertContains(follow, "2 ingredientes añadidos. El resto ya estaba en la lista.")
+        names = set(
+            ShoppingItem.objects.filter(household=self.household).values_list("name", flat=True)
+        )
+        self.assertEqual(names, {"Cebolla", "200 g de lentejas", "1 cebolla"})
+        again = self.client.post(
+            f"/lista/desde-receta/{recipe.pk}/",
+            {"next": "/menu/"},
+        )
+        self.assertEqual(again.status_code, 302)
+        self.assertEqual(again.url, "/menu/")
+        self.assertEqual(ShoppingItem.objects.filter(household=self.household).count(), 3)
+        empty = Recipe.objects.create(household=self.household, name="Sin lista", ingredients="")
+        missing = self.client.post(f"/lista/desde-receta/{empty.pk}/", {"next": "https://otro"})
+        self.assertRedirects(missing, "/lista/")
+        self.client.login(username="vecino", password="clave-segura-1")
+        foreign = self.client.post(f"/lista/desde-receta/{recipe.pk}/")
+        self.assertEqual(foreign.status_code, 404)
+
+    def test_name_and_order_are_saved_for_the_household(self):
+        self.client.post("/lista/anadir/", {"name": "Pan"})
+        self.client.post("/lista/anadir/", {"name": "Leche"})
+        self.client.post("/lista/anadir/", {"name": "Arroz"})
+        items = list(ShoppingItem.objects.filter(household=self.household).order_by("position"))
+        self.assertEqual([item.name for item in items], ["Pan", "Leche", "Arroz"])
+        renamed = self.client.post(
+            f"/lista/{items[0].pk}/nombre/",
+            {"name": "Pan de molde"},
+            HTTP_X_SHOP="1",
+        )
+        self.assertEqual(renamed.status_code, 200)
+        self.assertIn("Pan de molde", renamed.json()["html"])
+        clash = self.client.post(
+            f"/lista/{items[1].pk}/nombre/",
+            {"name": "pan de molde"},
+            HTTP_X_SHOP="1",
+        )
+        self.assertEqual(clash.json()["error"], "Ya está en la lista.")
+        items[1].refresh_from_db()
+        self.assertEqual(items[1].name, "Leche")
+        order = ",".join(str(item.pk) for item in (items[2], items[0], items[1]))
+        moved = self.client.post("/lista/orden/", {"order": order}, HTTP_X_SHOP="1")
+        self.assertEqual(moved.status_code, 200)
+        self.client.login(username="pareja", password="clave-segura-1")
+        page = self.client.get("/lista/")
+        body = page.content
+        self.assertLess(body.find(b"Arroz"), body.find(b"Pan de molde"))
+        self.assertLess(body.find(b"Pan de molde"), body.find(b"Leche"))
+        self.client.login(username="vecino", password="clave-segura-1")
+        self.assertEqual(
+            self.client.post(f"/lista/{items[2].pk}/nombre/", {"name": "Otro"}).status_code,
+            404,
+        )

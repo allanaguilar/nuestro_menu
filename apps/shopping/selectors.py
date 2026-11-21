@@ -70,30 +70,21 @@ def shopping_page(household, user, form=None, client_key=""):
     items = list(
         ShoppingItem.objects.filter(household=household)
         .select_related("added_by")
-        .order_by("name")
+        .order_by("done", "position", "name")
     )
     recent = timezone.now() - RECENT_ADD
     for item in items:
         item.fresh_from = ""
         if item.added_by_id and item.created_at >= recent:
             item.fresh_from = person_label(item.added_by)
-    pending = [item for item in items if not item.done]
+    pending_items = [item for item in items if not item.done]
     cart = [item for item in items if item.done]
-    by_aisle = {key: [] for key, _label in ShoppingItem.Aisle.choices}
-    for item in pending:
-        by_aisle[item.aisle].append(item)
-    groups = [
-        {"key": key, "label": label, "items": by_aisle[key]}
-        for key, label in ShoppingItem.Aisle.choices
-        if by_aisle[key]
-    ]
-    count = len(pending)
+    count = len(pending_items)
     return {
-        "groups": groups,
+        "pending_items": pending_items,
         "cart": cart,
         "pending": count,
         "pending_label": pending_sentence(count) if items else "",
-        "aisles": ShoppingItem.Aisle.choices,
         "form": form or AddShoppingItemForm(),
         "has_items": bool(items),
         "viewers": viewers_sentence(household, user, client_key) if user is not None else "",

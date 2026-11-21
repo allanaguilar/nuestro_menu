@@ -1,8 +1,10 @@
 import json
 
 from django.conf import settings
+from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.template.loader import render_to_string
 from django.views import View
 from django.views.generic import TemplateView
@@ -11,8 +13,16 @@ from apps.core.mixins import HouseholdRequiredMixin, get_owned_or_404
 from apps.shopping.forms import AddShoppingItemForm
 from apps.shopping.models import ShoppingItem, ShoppingPushSubscription, product_key
 from apps.shopping.push import added_notice, cleared_notice, notify_others
-from apps.shopping.selectors import shopping_page, touch_presence
-from apps.shopping.services import ShoppingError, add_shopping_item, clear_bought
+from apps.recipes.selectors import recipes_for_household
+from apps.shopping.selectors import person_label, shopping_page, touch_presence
+from apps.shopping.services import (
+    ShoppingError,
+    add_recipe_ingredients,
+    add_shopping_item,
+    clear_bought,
+    rename_shopping_item,
+    reorder_shopping_items,
+)
 
 
 def shop_client_key(request):
@@ -108,6 +118,43 @@ class AddShoppingItemView(HouseholdRequiredMixin, View):
         )
 
 
+def ingredients_message(added, skipped):
+    if added == 0:
+        return "Esos ingredientes ya estaban en la lista."
+    if added == 1 and skipped == 0:
+        return "1 ingrediente añadido a la compra."
+    if added == 1:
+        return "1 ingrediente añadido. El resto ya estaba en la lista."
+    if skipped:
+        return f"{added} ingredientes añadidos. El resto ya estaba en la lista."
+    return f"{added} ingredientes añadidos a la compra."
+
+
+def same_site_next(request):
+    target = (request.POST.get("next") or "").strip()
+    if target.startswith("/") and not target.startswith("//"):
+        return target
+    return reverse("shopping:list")
+
+
+class AddRecipeIngredientsView(HouseholdRequiredMixin, View):
+    def post(self, request, pk):
+        recipe = get_owned_or_404(recipes_for_household(request.household), pk=pk)
+        if not recipe.ingredient_lines:
+            messages.error(request, "Esta receta no tiene ingredientes.")
+            return redirect(same_site_next(request))
+        added, skipped = add_recipe_ingredients(request.household, recipe, request.user)
+        if added:
+            notify_others(
+                request.household,
+                request.user,
+                shop_client_key(request),
+                f"{person_label(request.user)} añadió ingredientes de {recipe.name}",
+            )
+        messages.success(request, ingredients_message(added, skipped))
+        return redirect(same_site_next(request))
+
+
 class ToggleShoppingItemView(HouseholdRequiredMixin, View):
     def post(self, request, pk):
         item = get_owned_or_404(
@@ -120,15 +167,27 @@ class ToggleShoppingItemView(HouseholdRequiredMixin, View):
         return redirect("shopping:list")
 
 
-class MoveShoppingItemView(HouseholdRequiredMixin, View):
+class RenameShoppingItemView(HouseholdRequiredMixin, View):
     def post(self, request, pk):
         item = get_owned_or_404(
             ShoppingItem.objects.filter(household=request.household), pk=pk
         )
-        aisle = request.POST.get("aisle", "")
-        if aisle in ShoppingItem.Aisle.values and not item.done:
-            item.aisle = aisle
-            item.save(update_fields=["aisle", "updated_at"])
+        try:
+            rename_shopping_item(item, request.POST.get("name", ""))
+        except ShoppingError as exc:
+            if wants_shop_fragment(request):
+                return shop_json(request, extra={"error": str(exc)})
+            messages.error(request, str(exc))
+            return redirect("shopping:list")
+        if wants_shop_fragment(request):
+            return shop_json(request)
+        return redirect("shopping:list")
+
+
+class ReorderShoppingView(HouseholdRequiredMixin, View):
+    def post(self, request):
+        ordered = [part for part in (request.POST.get("order") or "").split(",") if part]
+        reorder_shopping_items(request.household, ordered)
         if wants_shop_fragment(request):
             return shop_json(request)
         return redirect("shopping:list")

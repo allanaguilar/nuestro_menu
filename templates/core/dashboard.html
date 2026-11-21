@@ -66,7 +66,7 @@
         </div>
       </form>
       <p class="day-recipe-meta">{{ item.entry.recipe.meta_line }}</p>
-      {% include "includes/recipe_body.html" with recipe=item.entry.recipe %}
+      {% include "includes/recipe_body.html" with recipe=item.entry.recipe offer_shopping=True %}
     </section>
     {% else %}
     <div class="day-rail-when">

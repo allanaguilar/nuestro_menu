@@ -21,8 +21,6 @@
   <div id="shop-add-error"{% if not form.name.errors %} hidden{% endif %}>{{ form.name.errors }}</div>
   <button class="button" type="submit">Añadir</button>
 </form>
-{{ aisles|json_script:"shop-aisles" }}
-
 <div id="shop-live" data-revision="{{ revision }}" data-fragment="{% url 'shopping:fragment' %}" data-home="{{ request.household.id }}">
   {% include "shopping/live.html" %}
 </div>

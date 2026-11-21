@@ -1,0 +1,5 @@
+<form class="day-ingredients" method="post" action="{% url 'shopping:from_recipe' recipe.pk %}">
+  {% csrf_token %}
+  <input type="hidden" name="next" value="{{ request.get_full_path }}">
+  <button class="button" type="submit">Añadir a la compra</button>
+</form>

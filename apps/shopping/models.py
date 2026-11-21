@@ -40,6 +40,7 @@ class ShoppingItem(models.Model):
     aisle = models.CharField(
         "pasillo", max_length=16, choices=Aisle.choices, default=Aisle.NONE
     )
+    position = models.PositiveIntegerField("orden", default=0)
     done = models.BooleanField("en el carro", default=False)
     added_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -54,7 +55,7 @@ class ShoppingItem(models.Model):
     class Meta:
         verbose_name = "artículo"
         verbose_name_plural = "artículos"
-        ordering = ["name"]
+        ordering = ["done", "position", "name"]
         constraints = [
             models.UniqueConstraint(
                 fields=["household", "normalized_name"],

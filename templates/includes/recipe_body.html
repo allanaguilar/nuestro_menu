@@ -6,6 +6,9 @@
     <li>{{ line }}</li>
     {% endfor %}
   </ul>
+  {% if offer_shopping %}
+    {% include "includes/add_ingredients.html" %}
+  {% endif %}
   {% endif %}
   {% if recipe.step_lines %}
   <h4>Pasos</h4>

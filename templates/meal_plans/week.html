@@ -94,7 +94,7 @@
     <section id="receta-{{ item.date|date:'Y-m-d' }}" class="day-recipe" hidden>
         <h3>{{ item.entry.recipe.name }}</h3>
         <p class="day-recipe-meta">{{ item.entry.recipe.meta_line }}</p>
-        {% include "includes/recipe_body.html" with recipe=item.entry.recipe %}
+        {% include "includes/recipe_body.html" with recipe=item.entry.recipe offer_shopping=True %}
         {% include "includes/day_recipe_actions.html" with recipe=item.entry.recipe %}
     </section>
     {% endif %}

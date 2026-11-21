@@ -629,34 +629,6 @@
     }).catch(function () {});
   }
 
-  function shopAisles() {
-    const node = document.getElementById("shop-aisles");
-    if (node) {
-      try {
-        const parsed = JSON.parse(node.textContent);
-        if (parsed && parsed.length) return parsed;
-      } catch (err) {
-        /* usa la lista fija */
-      }
-    }
-    return [
-      ["none", "Sin pasillo"],
-      ["frutas", "Frutas"],
-      ["verduras", "Verduras"],
-      ["lacteos", "Lácteos"],
-      ["carnes", "Carnes"],
-      ["pescados", "Pescados"],
-      ["fridge", "Nevera"],
-      ["pantry", "Despensa"],
-      ["cleaning", "Limpieza"],
-      ["other", "Otros"],
-    ];
-  }
-
-  function shopAisleAllowed(value) {
-    return shopAisles().some(function (pair) { return pair[0] === value; });
-  }
-
   function shopPendingLabel(items) {
     if (!items.length) return "";
     const count = items.filter(function (item) { return !item.done; }).length;
@@ -669,13 +641,6 @@
     return '<input type="hidden" name="csrfmiddlewaretoken" value="' + shopEscape(csrfToken()) + '">';
   }
 
-  function shopAisleOptions(current) {
-    return shopAisles().map(function (pair) {
-      const selected = pair[0] === current ? " selected" : "";
-      return '<option value="' + shopEscape(pair[0]) + '"' + selected + ">" + shopEscape(pair[1]) + "</option>";
-    }).join("");
-  }
-
   function shopItemHtml(item) {
     const name = shopEscape(item.name);
     const id = encodeURIComponent(item.id);
@@ -686,56 +651,32 @@
     const fresh = item.fresh
       ? '<span class="shop-who">' + shopEscape(item.fresh) + " lo añadió ahora</span>"
       : "";
-    const aisle = item.done ? "" : (
-      '<form method="post" action="/lista/' + id + '/pasillo/">' +
-      shopCsrfInput() +
-      '<label class="sr-only" for="aisle-' + rawId + '">Pasillo de ' + name + "</label>" +
-      '<select id="aisle-' + rawId + '" class="field-input shop-aisle-select" name="aisle" onchange="this.form.requestSubmit()">' +
-      shopAisleOptions(item.aisle) +
-      "</select></form>"
+    const title = item.done
+      ? '<span class="shop-name">' + name + "</span>"
+      : '<button type="button" class="shop-name" aria-label="Editar ' + name + '">' + name + "</button>";
+    const handle = item.done ? "" : (
+      '<button type="button" class="shop-handle" aria-label="Mover ' + name + '">' +
+      '<i class="icon fa-solid fa-grip-vertical" aria-hidden="true"></i></button>'
     );
-    return '<li class="shop-item' + doneClass + '" data-id="' + rawId + '" data-aisle="' + shopEscape(item.aisle || "none") + '" data-fresh="' + shopEscape(item.fresh || "") + '">' +
+    return '<li class="shop-item' + doneClass + '" data-id="' + rawId + '" data-fresh="' + shopEscape(item.fresh || "") + '">' +
       '<form method="post" action="/lista/' + id + '/hecho/">' +
       shopCsrfInput() +
       '<label class="check"><input type="hidden" name="done" value="0">' +
-      '<input type="checkbox" name="done" value="1"' + checked + ' aria-label="' + action + '" onchange="this.form.requestSubmit()">' +
-      '<span class="shop-copy"><span class="shop-name">' + name + "</span>" + fresh + "</span></label></form>" +
-      aisle + "</li>";
-  }
-
-  function shopAisleHtml(key, label, group) {
-    const icon = SHOP_ICONS[key] || "fa-tag";
-    return '<section class="shop-aisle" aria-labelledby="pasillo-' + shopEscape(key) + '">' +
-      '<h2 id="pasillo-' + shopEscape(key) + '"><i class="icon fa-solid ' + icon + '" aria-hidden="true"></i><span>' +
-      shopEscape(label) + "</span></h2><ul class=\"shop-list\">" + group.map(shopItemHtml).join("") + "</ul></section>";
+      '<input type="checkbox" name="done" value="1"' + checked + ' aria-label="' + action + '" onchange="this.form.requestSubmit()"></label></form>' +
+      '<div class="shop-copy">' + title + fresh + "</div>" +
+      handle + "</li>";
   }
 
   function shopBoardHtml(items) {
     if (!items.length) return '<p class="lede">La lista está al día. Escribe lo que falte.</p>';
-    const aisles = shopAisles();
-    const pending = items.filter(function (item) { return !item.done; }).sort(function (a, b) {
-      if (a.name < b.name) return -1;
-      if (a.name > b.name) return 1;
-      return 0;
-    });
-    const cart = items.filter(function (item) { return item.done; }).sort(function (a, b) {
-      if (a.name < b.name) return -1;
-      if (a.name > b.name) return 1;
-      return 0;
-    });
-    const known = {};
-    aisles.forEach(function (pair) { known[pair[0]] = true; });
+    const pending = items.filter(function (item) { return !item.done; });
+    const cart = items.filter(function (item) { return item.done; });
     let html = '<div class="shop-board">';
-    let pendingHtml = "";
-    aisles.forEach(function (pair) {
-      const group = pending.filter(function (item) { return item.aisle === pair[0]; });
-      if (group.length) pendingHtml += shopAisleHtml(pair[0], pair[1], group);
-    });
-    const stray = pending.filter(function (item) { return !known[item.aisle]; });
-    if (stray.length) pendingHtml += shopAisleHtml("other", "Otros", stray);
-    if (pendingHtml) html += '<div class="shop-pending">' + pendingHtml + "</div>";
+    if (pending.length) {
+      html += '<div class="shop-pending"><ul class="shop-list">' + pending.map(shopItemHtml).join("") + "</ul></div>";
+    }
     if (cart.length) {
-      html += '<section class="shop-aisle shop-cart" aria-labelledby="en-el-carro">' +
+      html += '<section class="shop-cart" aria-labelledby="en-el-carro">' +
         '<h2 id="en-el-carro"><i class="icon fa-solid fa-cart-shopping" aria-hidden="true"></i><span>En el carro</span></h2>' +
         '<ul class="shop-list">' + cart.map(shopItemHtml).join("") + "</ul>" +
         '<form method="post" action="/lista/vaciar/">' + shopCsrfInput() +
@@ -748,21 +689,21 @@
     const items = [];
     root.querySelectorAll(".shop-item").forEach(function (row) {
       const nameEl = row.querySelector(".shop-name");
-      if (!nameEl) return;
       let id = row.dataset.id || "";
       if (!id) {
         const form = row.querySelector("form[action]");
-        const match = form && (form.getAttribute("action") || "").match(/\/lista\/([^/]+)\/(?:hecho|pasillo)\/?$/);
+        const match = form && (form.getAttribute("action") || "").match(/\/lista\/([^/]+)\/hecho\/?$/);
         id = match ? decodeURIComponent(match[1]) : "";
       }
       if (!id) return;
       const box = row.querySelector('input[type="checkbox"]');
-      const select = row.querySelector('select[name="aisle"]');
+      const input = row.querySelector('input[name="name"]');
+      const name = input ? input.value : (nameEl ? nameEl.textContent : row.dataset.name || "");
+      if (!name) return;
       items.push({
         id: id,
-        name: nameEl.textContent,
+        name: name,
         done: box ? box.checked : row.classList.contains("is-done"),
-        aisle: (select && select.value) || row.dataset.aisle || "none",
         fresh: row.dataset.fresh || "",
       });
     });
@@ -817,15 +758,42 @@
       if (items.some(function (item) { return shopKey(item.name) === shopKey(name); })) {
         return { ok: false, error: "Ya está en la lista." };
       }
-      items.push({ id: op.localId, name: name, aisle: "none", done: false, fresh: "" });
+      items.push({ id: op.localId, name: name, done: false, fresh: "" });
     } else if (op.kind === "toggle") {
       const item = items.find(function (entry) { return entry.id === op.itemId; });
       if (!item) return { ok: false };
       item.done = op.done === "1";
-    } else if (op.kind === "aisle") {
+    } else if (op.kind === "rename") {
+      const name = shopClean(op.name);
       const item = items.find(function (entry) { return entry.id === op.itemId; });
-      if (!item || item.done || !shopAisleAllowed(op.aisle)) return { ok: false };
-      item.aisle = op.aisle;
+      if (!item || !name) return { ok: false, error: "Escribe lo que falta." };
+      if (name.length > 120) {
+        return { ok: false, error: "El nombre es demasiado largo." };
+      }
+      if (items.some(function (entry) { return entry.id !== item.id && shopKey(entry.name) === shopKey(name); })) {
+        return { ok: false, error: "Ya está en la lista." };
+      }
+      item.name = name;
+    } else if (op.kind === "order") {
+      const ids = String(op.order || "").split(",").filter(Boolean);
+      const pending = items.filter(function (entry) { return !entry.done; });
+      const byId = {};
+      pending.forEach(function (entry) { byId[entry.id] = entry; });
+      const next = [];
+      ids.forEach(function (id) {
+        if (byId[id]) {
+          next.push(byId[id]);
+          delete byId[id];
+        }
+      });
+      pending.forEach(function (entry) {
+        if (byId[entry.id]) next.push(entry);
+      });
+      const cart = items.filter(function (entry) { return entry.done; });
+      items.splice(0, items.length);
+      next.concat(cart).forEach(function (entry) { items.push(entry); });
+    } else if (op.kind === "aisle") {
+      return { ok: true };
     } else if (op.kind === "clear") {
       for (let index = items.length - 1; index >= 0; index -= 1) {
         if (items[index].done) items.splice(index, 1);
@@ -927,13 +895,14 @@
       });
       return;
     }
-    const aisle = action.match(/\/lista\/([^/]+)\/pasillo\/?$/);
-    if (!aisle) return;
-    const select = form.querySelector('select[name="aisle"]');
+    const rename = action.match(/\/lista\/([^/]+)\/nombre\/?$/);
+    if (!rename) return;
+    const input = form.querySelector('input[name="name"]');
+    form.dataset.sent = "1";
     enqueueAndFlush({
-      kind: "aisle",
-      itemId: decodeURIComponent(aisle[1]),
-      aisle: select ? select.value : "",
+      kind: "rename",
+      itemId: decodeURIComponent(rename[1]),
+      name: input ? input.value : "",
     });
   }
 
@@ -955,7 +924,7 @@
       itemId: op.itemId || "",
       name: op.name || "",
       done: op.done || "",
-      aisle: op.aisle || "",
+      order: op.order || "",
     };
     if (!record.home) return;
     memoryQueue.push(record);
@@ -984,9 +953,14 @@
     } else if (op.kind === "toggle") {
       url = "/lista/" + encodeURIComponent(op.itemId) + "/hecho/";
       body.append("done", op.done === "1" ? "1" : "0");
+    } else if (op.kind === "rename") {
+      url = "/lista/" + encodeURIComponent(op.itemId) + "/nombre/";
+      body.append("name", op.name || "");
+    } else if (op.kind === "order") {
+      url = "/lista/orden/";
+      body.append("order", op.order || "");
     } else if (op.kind === "aisle") {
-      url = "/lista/" + encodeURIComponent(op.itemId) + "/pasillo/";
-      body.append("aisle", op.aisle || "");
+      return Promise.resolve({ skip: true });
     } else if (op.kind === "clear") {
       url = "/lista/vaciar/";
     } else return Promise.resolve({ skip: true });
@@ -1105,7 +1079,11 @@
     if (!live) return Promise.resolve();
     const epoch = shopEpoch;
     const focused = document.activeElement;
-    const holdBoard = focused && live.contains(focused) && focused.tagName === "SELECT";
+    const holdBoard = document.body.classList.contains("shop-dragging") || (
+      focused && live.contains(focused) && (
+        focused.tagName === "SELECT" || focused.tagName === "INPUT" || focused.tagName === "TEXTAREA"
+      )
+    );
     return fetch(url, {
       credentials: "same-origin",
       headers: { "X-Shop": "1", "X-Shop-Client": shopClient() },
@@ -1142,6 +1120,7 @@
   function pollShop() {
     const live = document.getElementById("shop-live");
     if (!live || !live.dataset.fragment || flushing) return;
+    if (document.body.classList.contains("shop-dragging")) return;
     if (!navigator.onLine) {
       shopReachable = false;
       refreshShopStatus();
@@ -1357,6 +1336,135 @@
   });
   document.addEventListener("htmx:sendError", restoreTab);
   document.addEventListener("htmx:responseError", restoreTab);
+
+  function shopNameButton(name) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "shop-name";
+    button.setAttribute("aria-label", "Editar " + name);
+    button.textContent = name;
+    return button;
+  }
+
+  function closeShopRename(form) {
+    if (!form || form.dataset.sent === "1") return;
+    form.dataset.sent = "1";
+    form.replaceWith(shopNameButton(form.dataset.original || ""));
+  }
+
+  function openShopName(button) {
+    const row = button.closest(".shop-item");
+    if (!row || row.querySelector(".shop-rename")) return;
+    const current = shopClean(button.textContent);
+    const form = document.createElement("form");
+    form.method = "post";
+    form.action = "/lista/" + encodeURIComponent(row.dataset.id) + "/nombre/";
+    form.className = "shop-rename";
+    form.dataset.original = current;
+    form.innerHTML = shopCsrfInput() +
+      '<input class="field-input" name="name" maxlength="120" aria-label="Nombre">' +
+      '<button type="button" class="shop-cancel">Cancelar</button>';
+    const input = form.querySelector('input[name="name"]');
+    input.value = current;
+    button.replaceWith(form);
+    input.focus();
+    const end = input.value.length;
+    if (input.setSelectionRange) input.setSelectionRange(end, end);
+    input.addEventListener("keydown", function (event) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      closeShopRename(form);
+    });
+    input.addEventListener("blur", function () {
+      window.setTimeout(function () {
+        if (!form.isConnected || form.dataset.sent === "1") return;
+        if (form.dataset.canceling === "1") {
+          closeShopRename(form);
+          return;
+        }
+        const next = shopClean(input.value);
+        if (!next || next === current) {
+          closeShopRename(form);
+          return;
+        }
+        form.requestSubmit();
+      }, 0);
+    });
+  }
+
+  let shopDrag = null;
+
+  function shopRows(list) {
+    return Array.prototype.filter.call(list.children, function (node) {
+      return node.classList && node.classList.contains("shop-item");
+    });
+  }
+
+  function shopOrder(list) {
+    return shopRows(list).map(function (row) { return row.dataset.id; }).join(",");
+  }
+
+  document.addEventListener("pointerdown", function (event) {
+    const cancel = event.target.closest && event.target.closest(".shop-cancel");
+    if (!cancel) return;
+    const form = cancel.closest("form");
+    if (form) form.dataset.canceling = "1";
+  });
+
+  document.addEventListener("click", function (event) {
+    const cancel = event.target.closest && event.target.closest(".shop-cancel");
+    if (cancel) {
+      event.preventDefault();
+      closeShopRename(cancel.closest("form"));
+      return;
+    }
+    const button = event.target.closest && event.target.closest("button.shop-name");
+    if (!button) return;
+    event.preventDefault();
+    openShopName(button);
+  });
+
+  document.addEventListener("pointerdown", function (event) {
+    const handle = event.target.closest && event.target.closest(".shop-handle");
+    if (!handle || !event.isPrimary || event.button) return;
+    const row = handle.closest(".shop-item");
+    const list = row && row.parentElement;
+    if (!row || !list) return;
+    event.preventDefault();
+    shopDrag = { row: row, list: list, pointer: event.pointerId, start: shopOrder(list) };
+    row.classList.add("is-dragging");
+    document.body.classList.add("shop-dragging");
+    if (handle.setPointerCapture) handle.setPointerCapture(event.pointerId);
+  });
+
+  document.addEventListener("pointermove", function (event) {
+    if (!shopDrag || event.pointerId !== shopDrag.pointer) return;
+    const rows = shopRows(shopDrag.list);
+    let before = null;
+    for (let index = 0; index < rows.length; index += 1) {
+      const rect = rows[index].getBoundingClientRect();
+      if (event.clientY < rect.top + rect.height / 2) {
+        before = rows[index];
+        break;
+      }
+    }
+    if (before === shopDrag.row) return;
+    shopDrag.list.insertBefore(shopDrag.row, before);
+  });
+
+  function endShopDrag(event) {
+    if (!shopDrag || (event && event.pointerId !== shopDrag.pointer)) return;
+    const drag = shopDrag;
+    shopDrag = null;
+    drag.row.classList.remove("is-dragging");
+    document.body.classList.remove("shop-dragging");
+    const order = shopOrder(drag.list);
+    if (!order || order === drag.start) return;
+    enqueueAndFlush({ kind: "order", order: order });
+  }
+
+  document.addEventListener("pointerup", endShopDrag);
+  document.addEventListener("pointercancel", endShopDrag);
 
   let shopTimer = 0;
   function watchShop() {
