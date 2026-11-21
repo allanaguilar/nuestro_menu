@@ -7,6 +7,19 @@
   {{ form.as_p }}
   <button class="button" type="submit">Guardar nombre</button>
 </form>
+<form method="post" class="panel model-form">
+  {% csrf_token %}
+  <input type="hidden" name="form" value="gemini_model">
+  <h2>Modelo de IA</h2>
+  <label for="gemini-model">Modelo para leer recetas</label>
+  <select class="field-input" id="gemini-model" name="gemini_model">
+    {% for model in gemini_models %}
+    <option value="{{ model.name }}"{% if model.name == gemini_model %} selected{% endif %}>{{ model.label }} · {{ model.quota }}</option>
+    {% endfor %}
+  </select>
+  <p class="hint">Cada modelo tiene su propio cupo. El número es el de las lecturas hechas desde aquí hoy, también las que fallan. Si Google lo da por agotado, se marca al intentarlo. El cupo se reinicia a medianoche del Pacífico.</p>
+  <button class="button" type="submit">Guardar modelo</button>
+</form>
 <form method="post" class="panel pref-form">
   {% csrf_token %}
   <input type="hidden" name="form" value="baby_menu">

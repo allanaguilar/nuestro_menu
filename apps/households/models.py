@@ -10,6 +10,7 @@ from django.utils import timezone
 class Household(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField("nombre", max_length=120)
+    gemini_model = models.CharField("modelo de IA", max_length=80, default="gemini-3.5-flash")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

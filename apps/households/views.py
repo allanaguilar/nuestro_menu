@@ -10,6 +10,7 @@ from django.views.generic import FormView, TemplateView
 from apps.core.mail import EmailDeliveryError
 from apps.core.mixins import HouseholdRequiredMixin
 from apps.households.forms import HouseholdSettingsForm, PasswordResetForm, SignUpForm
+from apps.recipes.quota import allowed_model, gemini_model_options
 from apps.preferences.models import MenuPreference
 from apps.households.models import HouseholdInvite
 from apps.households.selectors import get_user_membership, list_members
@@ -127,6 +128,8 @@ class HouseholdSettingsView(HouseholdRequiredMixin, FormView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["members"] = list_members(self.request.household)
+        context["gemini_model"] = self.request.household.gemini_model
+        context["gemini_models"] = gemini_model_options(self.request.household.gemini_model)
         context["is_owner"] = (
             self.request.membership.role == self.request.membership.Role.OWNER
         )
@@ -145,6 +148,16 @@ class HouseholdSettingsView(HouseholdRequiredMixin, FormView):
         return context
 
     def post(self, request, *args, **kwargs):
+        if request.POST.get("form") == "gemini_model":
+            chosen = (request.POST.get("gemini_model") or "").strip()
+            if not allowed_model(chosen):
+                messages.error(request, "Ese modelo no está disponible.")
+                return redirect("households:settings")
+            household = request.household
+            household.gemini_model = chosen
+            household.save(update_fields=["gemini_model"])
+            messages.success(request, "Modelo de IA guardado.")
+            return redirect("households:settings")
         if request.POST.get("form") == "baby_menu":
             MenuPreference.objects.update_or_create(
                 user=request.user,

@@ -339,6 +339,8 @@ label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
   font-size: 1.15rem;
 }
 .preference-list .tag { margin: 0 0 0.15rem; }
+.model-form { display: grid; gap: 0.55rem; max-width: 40rem; margin: 0.85rem 0; }
+.model-form h2 { margin: 0; }
 .pref-form { margin: 0.4rem 0 0; gap: 0.35rem; }
 .pref-form .check { min-height: 40px; }
 .pref-form .button { margin-top: 0.15rem; }

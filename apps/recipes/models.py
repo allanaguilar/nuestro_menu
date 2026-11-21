@@ -107,3 +107,23 @@ class Recipe(models.Model):
     def save(self, *args, **kwargs):
         self.normalized_name = normalize_recipe_name(self.name)
         super().save(*args, **kwargs)
+
+
+class GeminiDailyUse(models.Model):
+    model_name = models.CharField(max_length=80)
+    day = models.DateField()
+    count = models.PositiveIntegerField(default=0)
+    daily_limit = models.PositiveIntegerField(null=True, blank=True)
+    exhausted = models.BooleanField(default=False)
+
+    class Meta:
+        verbose_name = "uso de Gemini"
+        verbose_name_plural = "usos de Gemini"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["model_name", "day"], name="uniq_gemini_daily_use"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.model_name} {self.day}"

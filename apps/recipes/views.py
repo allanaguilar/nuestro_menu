@@ -158,7 +158,7 @@ class RecipeInterpretView(HouseholdRequiredMixin, View):
             recipe = get_owned_or_404(recipes_for_household(request.household), pk=pk)
         title = "Editar receta" if recipe is not None else "Nueva receta"
         try:
-            parsed = interpret_recipe(pasted)
+            parsed = interpret_recipe(pasted, model=request.household.gemini_model)
         except RecipeReadError as exc:
             messages.error(request, str(exc))
             form = RecipeForm(household=request.household, instance=recipe)

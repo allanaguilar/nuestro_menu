@@ -7,6 +7,7 @@ from urllib.request import Request, urlopen
 from django.conf import settings
 
 from apps.recipes.models import Recipe
+from apps.recipes.quota import record_gemini_use
 from apps.recipes.services import guess_recipe_category
 
 logger = logging.getLogger(__name__)
@@ -42,6 +43,43 @@ def _retry_phrase(error):
     return "Podrás volver a intentarlo mañana."
 
 
+def _daily_limit(error):
+    for detail in error.get("details") or []:
+        if not isinstance(detail, dict):
+            continue
+        for violation in detail.get("violations") or []:
+            if not isinstance(violation, dict):
+                continue
+            quota_id = str(violation.get("quotaId") or "")
+            if "PerDay" not in quota_id or not violation.get("quotaValue"):
+                continue
+            try:
+                return int(violation["quotaValue"])
+            except (TypeError, ValueError):
+                continue
+    return None
+
+
+def _note_model_use(model_name, exc):
+    if isinstance(exc, HTTPError):
+        error = _error_payload(exc)
+        status = str(error.get("status") or "")
+        limit = _daily_limit(error)
+        if exc.code == 429 or status == "RESOURCE_EXHAUSTED":
+            record_gemini_use(
+                model_name,
+                counted=False,
+                limit=limit,
+                exhausted=limit is not None,
+            )
+        else:
+            record_gemini_use(model_name, counted=True)
+        return error
+    if isinstance(exc, TimeoutError):
+        record_gemini_use(model_name, counted=True)
+    return {}
+
+
 def _quota_message(error):
     limit = ""
     for detail in error.get("details") or []:
@@ -58,9 +96,10 @@ def _quota_message(error):
     return f"{lead} {_retry_phrase(error)}"
 
 
-def _connection_message(exc):
+def _connection_message(exc, error=None):
     if isinstance(exc, HTTPError):
-        error = _error_payload(exc)
+        if error is None:
+            error = _error_payload(exc)
         status = str(error.get("status") or "")
         if exc.code == 429 or status == "RESOURCE_EXHAUSTED":
             return _quota_message(error)
@@ -86,7 +125,7 @@ class RecipeReadError(Exception):
     """El modelo no devolvió una receta usable."""
 
 
-def interpret_recipe(text: str) -> dict:
+def interpret_recipe(text: str, model: str | None = None) -> dict:
     cleaned = (text or "").strip()
     if not cleaned:
         raise RecipeReadError("Pega el texto de la receta antes de procesarla.")
@@ -141,9 +180,9 @@ def interpret_recipe(text: str) -> dict:
             "responseSchema": schema,
         },
     }
-    model = quote(settings.GEMINI_MODEL, safe="")
+    model_name = (model or settings.GEMINI_MODEL or "").strip()
     request = Request(
-        f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+        f"https://generativelanguage.googleapis.com/v1beta/models/{quote(model_name, safe='')}:generateContent",
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "accept": "application/json",
@@ -156,9 +195,12 @@ def interpret_recipe(text: str) -> dict:
         with urlopen(request, timeout=_TIMEOUT) as response:
             raw = response.read()
     except (HTTPError, URLError, TimeoutError, OSError) as exc:
-        message = _connection_message(exc)
+        error = _note_model_use(model_name, exc)
+        message = _connection_message(exc, error)
         logger.error("Lectura de receta fallida: %s", message)
         raise RecipeReadError(message) from exc
+    else:
+        record_gemini_use(model_name, counted=True)
     try:
         body = json.loads(raw)
         content = body["candidates"][0]["content"]["parts"][0]["text"]

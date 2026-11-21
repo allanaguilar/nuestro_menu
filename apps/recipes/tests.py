@@ -312,13 +312,22 @@ class RecipeImportTests(TestCase):
     @override_settings(GEMINI_API_KEY="clave-de-prueba")
     def test_quota_error_explains_the_free_limit(self):
         self.client.login(username="allan", password="clave-segura-1")
+        self.household.gemini_model = "gemini-3.6-flash"
+        self.household.save(update_fields=["gemini_model"])
         body = json.dumps(
             {
                 "error": {
                     "status": "RESOURCE_EXHAUSTED",
                     "details": [
                         {"retryDelay": "65641s"},
-                        {"violations": [{"quotaValue": "20"}]},
+                        {
+                            "violations": [
+                                {
+                                    "quotaId": "GenerateRequestsPerDayPerProjectPerModel-FreeTier",
+                                    "quotaValue": "20",
+                                }
+                            ]
+                        },
                     ],
                 }
             }
@@ -334,6 +343,19 @@ class RecipeImportTests(TestCase):
             response = self.client.post("/recetas/interpretar/", {"source": "lentejas"})
         self.assertContains(response, "Se han agotado las 20 lecturas gratuitas de hoy.")
         self.assertContains(response, "en unas 18 horas")
+        home = self.client.get("/hogar/")
+        self.assertContains(home, "Gemini 3.6 Flash · agotado, 20 de 20 hoy")
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba", GEMINI_MODEL="gemini-3.5-flash")
+    def test_household_model_is_the_one_sent(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        self.household.gemini_model = "gemini-3.5-flash-lite"
+        self.household.save(update_fields=["gemini_model"])
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = self._model_body()
+            self.client.post("/recetas/interpretar/", {"source": "lentejas"})
+        sent = urlopen.call_args.args[0]
+        self.assertIn("models/gemini-3.5-flash-lite:generateContent", sent.full_url)
 
     @override_settings(GEMINI_API_KEY="")
     def test_paste_box_stays_hidden_without_a_key(self):

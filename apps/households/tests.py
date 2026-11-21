@@ -146,6 +146,21 @@ class HouseholdTests(TestCase):
         self.assertRedirects(response, "/inicio/")
         self.assertTrue(User.objects.get(username="mario").check_password("demo"))
 
+    def test_household_can_choose_the_ai_model(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        page = self.client.get("/hogar/")
+        self.assertContains(page, "Modelo de IA")
+        self.assertContains(page, "Gemini 3.5 Flash Lite · 0 hoy")
+        self.assertContains(page, "Gemini 3.6 Flash · 0 hoy")
+        response = self.client.post(
+            "/hogar/",
+            {"form": "gemini_model", "gemini_model": "gemini-3.5-flash-lite"},
+            follow=True,
+        )
+        self.assertContains(response, "Modelo de IA guardado.")
+        self.household.refresh_from_db()
+        self.assertEqual(self.household.gemini_model, "gemini-3.5-flash-lite")
+
     def test_settings_requires_login(self):
         response = self.client.get("/hogar/")
         self.assertEqual(response.status_code, 302)
