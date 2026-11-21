@@ -14,6 +14,68 @@ logger = logging.getLogger(__name__)
 _TIMEOUT = 20
 
 
+def _error_payload(exc):
+    try:
+        raw = exc.read().decode("utf-8", "replace")
+        data = json.loads(raw)
+    except (OSError, UnicodeError, json.JSONDecodeError, AttributeError):
+        return {}
+    error = data.get("error") if isinstance(data, dict) else None
+    return error if isinstance(error, dict) else {}
+
+
+def _retry_phrase(error):
+    for detail in error.get("details") or []:
+        if not isinstance(detail, dict):
+            continue
+        delay = str(detail.get("retryDelay") or "")
+        if not delay.endswith("s"):
+            continue
+        try:
+            seconds = float(delay[:-1])
+        except ValueError:
+            continue
+        hours = max(1, round(seconds / 3600))
+        if hours == 1:
+            return "Podrás volver a intentarlo en una hora."
+        return f"Podrás volver a intentarlo en unas {hours} horas."
+    return "Podrás volver a intentarlo mañana."
+
+
+def _quota_message(error):
+    limit = ""
+    for detail in error.get("details") or []:
+        if not isinstance(detail, dict):
+            continue
+        for violation in detail.get("violations") or []:
+            if isinstance(violation, dict) and violation.get("quotaValue"):
+                limit = str(violation["quotaValue"])
+                break
+    if limit:
+        lead = f"Se han agotado las {limit} lecturas gratuitas de hoy."
+    else:
+        lead = "Se han agotado las lecturas gratuitas de hoy."
+    return f"{lead} {_retry_phrase(error)}"
+
+
+def _connection_message(exc):
+    if isinstance(exc, HTTPError):
+        error = _error_payload(exc)
+        status = str(error.get("status") or "")
+        if exc.code == 429 or status == "RESOURCE_EXHAUSTED":
+            return _quota_message(error)
+        if exc.code in (401, 403):
+            return "La clave de la IA no es válida. Revisa la configuración."
+        if exc.code == 404:
+            return "El modelo de IA no está disponible."
+        if exc.code >= 500:
+            return "El servicio de IA no responde. Prueba otra vez dentro de un rato."
+        return "La IA ha rechazado la lectura. Prueba otra vez dentro de un rato."
+    if isinstance(exc, TimeoutError):
+        return "La IA ha tardado demasiado en responder. Prueba otra vez."
+    return "No hay conexión con la IA. Revisa la red y prueba otra vez."
+
+
 def _count(value):
     if not isinstance(value, int) or value < 1:
         return ""
@@ -26,8 +88,10 @@ class RecipeReadError(Exception):
 
 def interpret_recipe(text: str) -> dict:
     cleaned = (text or "").strip()
-    if not cleaned or not settings.GEMINI_API_KEY:
-        raise RecipeReadError("No se pudo leer la receta.")
+    if not cleaned:
+        raise RecipeReadError("Pega el texto de la receta antes de procesarla.")
+    if not settings.GEMINI_API_KEY:
+        raise RecipeReadError("Falta la clave de la IA.")
     categories = [value for value, _label in Recipe.Category.choices]
     schema = {
         "type": "object",
@@ -92,17 +156,20 @@ def interpret_recipe(text: str) -> dict:
         with urlopen(request, timeout=_TIMEOUT) as response:
             raw = response.read()
     except (HTTPError, URLError, TimeoutError, OSError) as exc:
-        logger.error("No se pudo leer la receta.")
-        raise RecipeReadError("No se pudo leer la receta.") from exc
+        message = _connection_message(exc)
+        logger.error("Lectura de receta fallida: %s", message)
+        raise RecipeReadError(message) from exc
     try:
         body = json.loads(raw)
         content = body["candidates"][0]["content"]["parts"][0]["text"]
         data = json.loads(content)
         name = " ".join(str(data.get("name") or "").split())
     except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
-        raise RecipeReadError("No se pudo leer la receta.") from exc
+        raise RecipeReadError(
+            "La IA no ha devuelto una receta que se pueda usar. Prueba con otro texto."
+        ) from exc
     if not name:
-        raise RecipeReadError("No se pudo leer la receta.")
+        raise RecipeReadError("La IA no ha encontrado el nombre de la receta. Prueba con otro texto.")
     category = str(data.get("category") or "")
     if category not in categories:
         category = guess_recipe_category(name)

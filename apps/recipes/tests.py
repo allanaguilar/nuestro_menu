@@ -1,7 +1,8 @@
 import json
 from datetime import date
+from io import BytesIO
 from unittest.mock import patch
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 
 from django.contrib.auth.models import User
 from django.test import TestCase, override_settings
@@ -304,9 +305,35 @@ class RecipeImportTests(TestCase):
             response = self.client.post(
                 "/recetas/interpretar/", {"source": "lentejas con cebolla"}
             )
-        self.assertContains(response, "No se pudo leer la receta. Escríbela en el formulario.")
+        self.assertContains(response, "No hay conexión con la IA. Revisa la red y prueba otra vez.")
         self.assertContains(response, "lentejas con cebolla")
         self.assertEqual(Recipe.objects.count(), before)
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_quota_error_explains_the_free_limit(self):
+        self.client.login(username="allan", password="clave-segura-1")
+        body = json.dumps(
+            {
+                "error": {
+                    "status": "RESOURCE_EXHAUSTED",
+                    "details": [
+                        {"retryDelay": "65641s"},
+                        {"violations": [{"quotaValue": "20"}]},
+                    ],
+                }
+            }
+        ).encode()
+        error = HTTPError(
+            "https://generativelanguage.googleapis.com/",
+            429,
+            "Too Many Requests",
+            hdrs=None,
+            fp=BytesIO(body),
+        )
+        with patch("apps.recipes.ai.urlopen", side_effect=error):
+            response = self.client.post("/recetas/interpretar/", {"source": "lentejas"})
+        self.assertContains(response, "Se han agotado las 20 lecturas gratuitas de hoy.")
+        self.assertContains(response, "en unas 18 horas")
 
     @override_settings(GEMINI_API_KEY="")
     def test_paste_box_stays_hidden_without_a_key(self):

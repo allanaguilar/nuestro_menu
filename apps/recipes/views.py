@@ -159,8 +159,8 @@ class RecipeInterpretView(HouseholdRequiredMixin, View):
         title = "Editar receta" if recipe is not None else "Nueva receta"
         try:
             parsed = interpret_recipe(pasted)
-        except RecipeReadError:
-            messages.error(request, "No se pudo leer la receta. Escríbela en el formulario.")
+        except RecipeReadError as exc:
+            messages.error(request, str(exc))
             form = RecipeForm(household=request.household, instance=recipe)
         else:
             form = RecipeForm(
