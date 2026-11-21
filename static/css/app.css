@@ -292,6 +292,36 @@ label { display: block; margin: 0.9rem 0 0.3rem; font-weight: 600; }
   background: var(--olive);
 }
 .summary-buy .summary-fill { background: var(--olive-dark); }
+.summary-buy .summary-bars > li { display: block; min-height: 0; }
+.summary-buy summary {
+  display: grid;
+  grid-template-columns: minmax(0, 9.5rem) minmax(0, 1fr) 1.6rem;
+  gap: 0.55rem;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.15rem 0.35rem;
+  border-radius: 12px;
+  cursor: pointer;
+  list-style: none;
+}
+.summary-buy summary::-webkit-details-marker { display: none; }
+.summary-buy summary::marker { content: ""; }
+.summary-buy details[open] > summary { background: var(--bg-accent); }
+.summary-buy summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.purchase-times {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.15rem 0 0.55rem;
+}
+.purchase-times th,
+.purchase-times td {
+  padding: 0.45rem 0.35rem;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  font-weight: 400;
+}
+.purchase-times th { color: var(--muted); }
+.purchase-times tr:last-child td { border-bottom: 0; }
 .summary-count { text-align: right; font-variant-numeric: tabular-nums; }
 .week-grid, .day-list, .recipe-list, .preference-list, .history-list {
   display: grid; gap: 1rem;

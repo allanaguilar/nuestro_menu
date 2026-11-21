@@ -195,7 +195,7 @@ class ReorderShoppingView(HouseholdRequiredMixin, View):
 
 class ClearBoughtView(HouseholdRequiredMixin, View):
     def post(self, request):
-        removed = clear_bought(request.household)
+        removed = clear_bought(request.household, request.user)
         if removed:
             notify_others(
                 request.household,

@@ -102,8 +102,8 @@ def add_recipe_ingredients(household, recipe, user=None):
     return added, skipped
 
 
-def clear_bought(household):
-    bought = list(ShoppingItem.objects.filter(household=household, done=True))
+def clear_bought(household, bought_by=None):
+    bought = list(ShoppingItem.objects.filter(household=household, done=True).select_related("added_by"))
     if bought:
         today = timezone.localdate()
         Purchase.objects.bulk_create(
@@ -113,6 +113,8 @@ def clear_bought(household):
                     name=item.name,
                     normalized_name=item.normalized_name,
                     bought_on=today,
+                    added_by=item.added_by,
+                    bought_by=bought_by,
                 )
                 for item in bought
             ]

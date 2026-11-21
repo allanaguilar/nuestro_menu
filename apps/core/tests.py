@@ -191,6 +191,134 @@ class SummaryTests(TestCase):
         self.assertNotContains(page, ">patata<")
         self.assertEqual(product_key("Patatas"), product_key("patata"))
 
+    def test_purchases_count_each_cart_clear_across_all_history(self):
+        Purchase.objects.create(
+            household=self.household,
+            name="2 cebollas",
+            normalized_name="2 cebollas",
+            bought_on=date(2020, 1, 1),
+        )
+        Purchase.objects.create(
+            household=self.household,
+            name="Cebolla",
+            normalized_name="cebolla",
+            bought_on=date(2020, 1, 2),
+        )
+        Purchase.objects.create(
+            household=self.household,
+            name="Cebollas",
+            normalized_name="cebollas",
+            bought_on=date(2026, 11, 5),
+        )
+        Purchase.objects.create(
+            household=self.household,
+            name="300 gr de pasta",
+            normalized_name="300 gr de pasta",
+            bought_on=date(2026, 11, 5),
+        )
+        Purchase.objects.create(
+            household=self.household,
+            name="Plátanos",
+            normalized_name="plátanos",
+            bought_on=date(2026, 11, 5),
+        )
+        Purchase.objects.create(
+            household=self.household,
+            name="Platanos",
+            normalized_name="platanos",
+            bought_on=date(2026, 11, 4),
+        )
+        pasted = (
+            "300 gr. de espaguetis 280 gr. de chorizo picante "
+            "2 cebolletas 2 pimientos verdes"
+        )
+        Purchase.objects.create(
+            household=self.household,
+            name=pasted,
+            normalized_name=pasted.casefold(),
+            bought_on=date(2026, 11, 5),
+        )
+        with patch("apps.core.summary.timezone.localdate", return_value=date(2026, 11, 5)):
+            page = self.client.get("/resumen/")
+        self.assertContains(page, "Cebollas")
+        self.assertContains(page, "2 cebollas")
+        self.assertContains(page, 'summary-count">2<')
+        self.assertNotContains(page, 'summary-count">3<')
+        self.assertContains(page, "Plátanos")
+        self.assertContains(page, 'summary-count">2<')
+        self.assertContains(page, "300 gr de pasta")
+        self.assertContains(page, 'summary-count">1<')
+        self.assertNotContains(page, "2 cebolletas")
+
+    def test_summary_shows_the_ten_most_bought_products(self):
+        for index in range(12):
+            name = f"Producto {index:02d}"
+            Purchase.objects.create(
+                household=self.household,
+                name=name,
+                normalized_name=name.casefold(),
+                bought_on=date(2026, 11, 5),
+            )
+            if index < 11:
+                Purchase.objects.create(
+                    household=self.household,
+                    name=name,
+                    normalized_name=name.casefold(),
+                    bought_on=date(2026, 11, 4),
+                )
+        with patch("apps.core.summary.timezone.localdate", return_value=date(2026, 11, 5)):
+            page = self.client.get("/resumen/")
+        self.assertContains(page, "Producto 00")
+        self.assertContains(page, "Producto 09")
+        self.assertNotContains(page, "Producto 10")
+        self.assertNotContains(page, "Producto 11")
+
+    def test_same_count_puts_the_latest_purchase_first(self):
+        Purchase.objects.create(
+            household=self.household,
+            name="Cebolla",
+            normalized_name="cebolla",
+            bought_on=date(2026, 10, 21),
+        )
+        Purchase.objects.create(
+            household=self.household,
+            name="Patata",
+            normalized_name="patata",
+            bought_on=date(2026, 11, 21),
+        )
+        with patch("apps.core.summary.timezone.localdate", return_value=date(2026, 11, 21)):
+            page = self.client.get("/resumen/")
+        body = page.content.decode()
+        self.assertLess(body.index(">Patata<"), body.index(">Cebolla<"))
+
+    def test_a_product_opens_each_purchase_with_date_and_people(self):
+        self.user.first_name = "Allan"
+        self.user.save(update_fields=["first_name"])
+        naiara = User.objects.create_user("naiara", password="clave-segura-1", first_name="Naiara")
+        item = ShoppingItem.objects.create(
+            household=self.household, name="Pan bimbo", added_by=naiara
+        )
+        item.done = True
+        item.save(update_fields=["done"])
+        with patch("apps.shopping.services.timezone.localdate", return_value=date(2026, 11, 17)):
+            clear_bought(self.household, self.user)
+        Purchase.objects.create(
+            household=self.household,
+            name="Pan bimbo",
+            normalized_name="pan bimbo",
+            bought_on=date(2026, 11, 6),
+        )
+        with patch("apps.core.summary.timezone.localdate", return_value=date(2026, 11, 21)):
+            page = self.client.get("/resumen/")
+        self.assertContains(page, "Comprado")
+        self.assertContains(page, "Lo añadió")
+        self.assertContains(page, "Lo compró")
+        self.assertContains(page, "mar 17 nov")
+        self.assertContains(page, "Naiara")
+        self.assertContains(page, "Allan")
+        self.assertContains(page, "vie 6 nov")
+        self.assertContains(page, "Sin registro")
+
     def test_summary_requires_login(self):
         self.client.logout()
         response = self.client.get("/resumen/")

@@ -2,7 +2,7 @@
 {% block title %}Resumen{% endblock %}
 {% block content %}
 <h1>Resumen</h1>
-<p class="lede">Últimas 4 semanas. Las comidas salen de los menús aprobados. Las compras, de lo que vacías del carro.</p>
+<p class="lede">Las comidas son de las últimas 4 semanas, a partir de los menús aprobados. Las compras reúnen todo el historial de lo que vacías del carro: los 10 productos que más veces han salido.</p>
 <div class="summary-list">
   <section class="panel summary-card" aria-labelledby="comidas">
     <h2 id="comidas">Comidas</h2>
@@ -23,17 +23,41 @@
   <section class="panel summary-card summary-buy" aria-labelledby="compras">
     <h2 id="compras">Compras</h2>
     {% if purchases %}
+    <p class="hint">Pulsa un producto para ver cada compra.</p>
     <ul class="summary-bars">
       {% for row in purchases %}
       <li>
-        <span class="summary-name">{{ row.name }}</span>
-        <span class="summary-track" aria-hidden="true"><span class="summary-fill" style="width: {{ row.percent }}%"></span></span>
-        <span class="summary-count">{{ row.count }}</span>
+        <details>
+          <summary>
+            <span class="summary-name">{{ row.name }}</span>
+            <span class="summary-track" aria-hidden="true"><span class="summary-fill" style="width: {{ row.percent }}%"></span></span>
+            <span class="summary-count">{{ row.count }}</span>
+          </summary>
+          <table class="purchase-times">
+            <caption class="sr-only">{{ row.name }}, {{ row.count }} {% if row.count == 1 %}vez{% else %}veces{% endif %}</caption>
+            <thead>
+              <tr>
+                <th scope="col">Comprado</th>
+                <th scope="col">Lo añadió</th>
+                <th scope="col">Lo compró</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for time in row.times %}
+              <tr>
+                <td>{{ time.when }}</td>
+                <td>{{ time.added }}</td>
+                <td>{{ time.bought }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </details>
       </li>
       {% endfor %}
     </ul>
     {% else %}
-    <p>Cuando vacíes el carro, los productos comprados saldrán aquí.</p>
+    <p>Cuando vacíes el carro, los productos comprados saldrán aquí. El número es cuántas veces vaciaste ese producto.</p>
     {% endif %}
   </section>
 </div>

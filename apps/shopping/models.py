@@ -120,7 +120,23 @@ class Purchase(models.Model):
     )
     name = models.CharField(max_length=120)
     normalized_name = models.CharField(max_length=120)
-    bought_on = models.DateField()
+    bought_on = models.DateField("comprado")
+    added_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="purchases_added",
+        verbose_name="lo añadió",
+    )
+    bought_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="purchases_bought",
+        verbose_name="lo compró",
+    )
 
     class Meta:
         verbose_name = "compra"
