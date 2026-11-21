@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import date, timedelta
 from io import BytesIO
 from unittest.mock import patch
 from urllib.error import HTTPError
@@ -10,6 +10,7 @@ from django.test import TestCase, override_settings
 from django.utils import timezone
 
 from apps.chores.models import Chore
+from apps.core.house_chat import house_snapshot
 from apps.core.mail import EmailDeliveryError
 from apps.core.models import HouseMessage
 from apps.core.week import monday_of, weekday_short
@@ -376,6 +377,37 @@ class HouseChatTests(TestCase):
         self.assertContains(page, 'id="house-open"')
         self.assertNotContains(page, ">Casa</span>")
 
+    def test_snapshot_includes_ingredients_without_naming_the_recipe(self):
+        self.recipe.ingredients = "200 g de lentejas\n1 cebolla"
+        self.recipe.steps = "Cocer las lentejas."
+        self.recipe.servings = 4
+        self.recipe.save()
+        Purchase.objects.create(
+            household=self.household, name="Pan bimbo", normalized_name="pan bimbo", bought_on=timezone.localdate()
+        )
+        Purchase.objects.create(
+            household=self.household, name="Pan bimbo", normalized_name="pan bimbo", bought_on=timezone.localdate()
+        )
+        Purchase.objects.create(
+            household=self.other_home, name="Secreto secreto", normalized_name="secreto", bought_on=timezone.localdate()
+        )
+        recipes = house_snapshot(self.household, self.user, "qué recetas tengo guardadas")
+        self.assertIn("200 g de lentejas", recipes)
+        self.assertIn("Cocer las lentejas.", recipes)
+        self.assertNotIn("Pan bimbo: 2 veces", recipes)
+        bought = house_snapshot(self.household, self.user, "qué productos compro más")
+        self.assertIn("Pan bimbo: 2 veces", bought)
+        self.assertNotIn("200 g de lentejas", bought)
+        today = house_snapshot(self.household, self.user, "qué comemos hoy")
+        self.assertIn("Lentejas", today)
+        self.assertNotIn("200 g de lentejas", today)
+        self.assertNotIn("Pan bimbo: 2 veces", today)
+        whole = house_snapshot(self.household, self.user, "qué hay en casa")
+        self.assertIn("200 g de lentejas", whole)
+        self.assertIn("Pan bimbo: 2 veces", whole)
+        self.assertIn("Alimentos del bebé", whole)
+        self.assertNotIn("Secreto secreto", whole)
+
     def test_empty_message_is_rejected(self):
         response = self.client.post("/casa/", {"text": "   "})
         self.assertEqual(response.status_code, 400)
@@ -393,12 +425,37 @@ class HouseChatTests(TestCase):
         question = sent["contents"][-1]["parts"][0]["text"]
         self.assertIn("Lentejas", question)
         self.assertNotIn("Secreto secreto", question)
+        self.assertIn("Recetas: Lentejas", question)
+        self.assertNotIn("Ingredientes:", question)
         self.assertIn("models/gemini-3.5-flash:generateContent", urlopen.call_args.args[0].full_url)
         self.assertEqual(HouseMessage.objects.filter(user=self.user).count(), 2)
         self.client.logout()
         self.client.login(username="naiara", password="clave-segura-1")
         history = self.client.get("/casa/")
         self.assertEqual(history.json()["messages"], [])
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_put_recipe_ingredients_on_the_list_and_a_dish_on_a_day(self):
+        self.recipe.ingredients = "200 g de lentejas"
+        self.recipe.is_meal = True
+        self.recipe.save()
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = self._body(
+                reply="Ingredientes en la lista.",
+                actions=[{"kind": "ingredients_to_list", "name": "Lentejas"}],
+            )
+            listed = self.client.post("/casa/", {"text": "Pon los ingredientes de las lentejas"})
+            urlopen.return_value.__enter__.return_value.read.return_value = self._body(
+                reply="El domingo toca lentejas.",
+                actions=[{"kind": "set_dish", "name": "Lentejas", "day": "domingo"}],
+            )
+            moved = self.client.post("/casa/", {"text": "El domingo lentejas"})
+        self.assertIn("Lista de compra · 1 de Lentejas", listed.json()["reply"]["receipts"])
+        self.assertTrue(ShoppingItem.objects.filter(household=self.household, name="200 g de lentejas").exists())
+        sunday = monday_of(timezone.localdate()) + timedelta(days=6)
+        entry = MealPlanEntry.objects.get(meal_plan__household=self.household, day=sunday)
+        self.assertEqual(entry.recipe, self.recipe)
+        self.assertIn("Menú ·", moved.json()["reply"]["receipts"][0])
 
     @override_settings(GEMINI_API_KEY="clave-de-prueba")
     def test_can_add_to_the_shopping_list_and_mark_a_chore(self):
