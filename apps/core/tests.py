@@ -699,6 +699,31 @@ class HouseChatTests(TestCase):
         self.assertEqual(missing.json()["reply"]["receipts"], [])
         self.assertEqual(saved.json()["reply"]["receipts"], ["Por hacer · Colada"])
         self.assertEqual(ChorePhoto.objects.filter(chore=chore).count(), 1)
+        sent = json.loads(urlopen.call_args.args[0].data.decode())
+        self.assertIn("Este mensaje trae una foto", sent["contents"][-1]["parts"][0]["text"])
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_a_named_chore_gets_the_photo_even_if_the_bot_forgets(self):
+        chore = Chore.objects.create(household=self.household, title="Colada", cadence=Chore.Cadence.TODAY)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            named = self._ask(
+                urlopen,
+                "No veo ninguna foto.",
+                [],
+                "Foto de la colada",
+                foto=self._jpeg(),
+            )
+            unnamed = self._ask(
+                urlopen,
+                "Dime más.",
+                [],
+                "Hola",
+                foto=self._jpeg(),
+            )
+        self.assertEqual(named.json()["reply"]["receipts"], ["Por hacer · Colada"])
+        self.assertEqual(ChorePhoto.objects.filter(chore=chore).count(), 1)
+        self.assertIn("no se ha guardado", unnamed.json()["reply"]["body"])
+        self.assertEqual(unnamed.json()["reply"]["receipts"], [])
 
     @override_settings(GEMINI_API_KEY="clave-de-prueba")
     def test_can_archive_and_reactivate_a_recipe(self):

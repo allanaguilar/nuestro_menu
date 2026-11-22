@@ -69,7 +69,9 @@ _SYSTEM = (
     "generate_menu arma el menú de esta semana y no lo aprueba. name puede ir vacío. "
     "Si el menú ya está aprobado, no lo mandes hasta que la persona confirme; entonces confirm es si. "
     "reorder_shopping pone en order los productos pendientes separados por comas. name puede ir vacío. "
-    "add_chore_photo guarda en la tarea name la foto que viene adjunta en este mensaje. "
+    "add_chore_photo guarda en la tarea name la foto adjunta a este mensaje. "
+    "Si el mensaje dice que trae una foto y nombra una tarea, incluye esa acción. "
+    "Si trae foto y no nombra tarea, pregunta cuál es y deja actions vacío. "
     "cadence es hoy, dia, semana o cuando. assignee es el nombre de una persona de la casa, o vacío. "
     "Para create_recipe, ingredients y steps van en líneas separadas y category es una de: "
     "legumbres, carne, pescado, pasta, arroz, verduras, huevos, otros. "
@@ -133,18 +135,28 @@ def speak(household, user, text, photo=None):
         ("user" if item.role == HouseMessage.Role.USER else "model", item.body)
         for item in prior
     ]
-    contents.append(("user", f"{house_snapshot(household, user, cleaned)}\n\nPregunta:\n{cleaned}"))
+    attached = "\n\nEste mensaje trae una foto." if _has_photo(photo) else ""
+    contents.append(("user", f"{house_snapshot(household, user, cleaned)}\n\nPregunta:\n{cleaned}{attached}"))
     data = ask_model(household.gemini_model, _SYSTEM, contents, _SCHEMA)
     reply = " ".join(str(data.get("reply") or "").split())
     notes = []
     receipts = []
     actions = data.get("actions") if isinstance(data.get("actions"), list) else []
+    tried_photo = False
     for action in actions[:_MAX_ACTIONS]:
         if not isinstance(action, dict):
             continue
+        if str(action.get("kind") or "").strip() == "add_chore_photo":
+            tried_photo = True
         if photo is not None:
             action["_upload"] = photo
         note, receipt = _apply(household, user, action)
+        if note:
+            notes.append(note)
+        if receipt:
+            receipts.append(receipt)
+    if _has_photo(photo) and not tried_photo:
+        note, receipt = _photo_from_question(household, cleaned, photo)
         if note:
             notes.append(note)
         if receipt:
@@ -675,6 +687,23 @@ def _update_chore(household, user, name, action):
         timezone.localdate(),
     )
     return "", f"Por hacer · {chore.title}"
+
+
+def _has_photo(photo):
+    return photo is not None and bool(getattr(photo, "size", 0))
+
+
+def _photo_from_question(household, question, photo):
+    folded = _fold(question)
+    board = open_chores(household, timezone.localdate())
+    hits = [
+        chore
+        for chore in board["hoy"] + board["cuando"]
+        if len(_fold(chore.title)) >= 4 and _fold(chore.title) in folded
+    ]
+    if len(hits) != 1:
+        return "La foto no se ha guardado. Dime la tarea en este mismo mensaje.", ""
+    return _add_chore_photo(household, None, hits[0].title, {"_upload": photo})
 
 
 def _add_chore_photo(household, _user, name, action):
