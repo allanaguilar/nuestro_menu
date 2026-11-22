@@ -1,3 +1,4 @@
+import re
 import unicodedata
 from datetime import timedelta
 
@@ -48,8 +49,8 @@ _SYSTEM = (
     "ingredients lleva cantidades, una por línea. "
     "steps lleva el procedimiento de verdad, un paso por línea, al menos seis, "
     "y cada paso dice el tiempo o el fuego, por ejemplo 8 minutos a fuego medio. "
-    "servings son las raciones y prep_time_minutes el tiempo de preparación en minutos. "
-    "Los dos van siempre rellenos, con un número, nunca vacíos. "
+    "En la ficha, servings son las raciones y prep_time_minutes el tiempo de preparación en minutos. "
+    "Escribe esos dos números en la ficha, no solo dentro del texto. Nunca los dejes vacíos. "
     "No la resumas en tres o cuatro líneas. La respuesta puede ser breve; el detalle va en steps. "
     "Si piden más detalle de una receta que ya existe, update_recipe sustituye steps con ese mismo nivel. "
     "Si falta un dato, dilo y deja actions vacío. "
@@ -506,15 +507,12 @@ def _create_recipe(household, _user, name, action):
     category = str(action.get("category") or "")
     if category not in categories:
         category = guess_recipe_category(name)
-    servings = action.get("servings")
-    if not isinstance(servings, int) or servings < 1:
-        servings = None
     recipe = Recipe.objects.create(
         household=household,
         name=name[:180],
         category=category,
-        servings=servings,
-        prep_time_minutes=_minutes(action.get("prep_time_minutes")),
+        servings=_servings(action.get("servings")) or _servings_in(f"{ingredients}\n{steps}") or 2,
+        prep_time_minutes=_minutes(action.get("prep_time_minutes")) or _minutes_in(steps),
         ingredients=ingredients,
         steps=steps,
     )
@@ -547,11 +545,11 @@ def _update_recipe(household, _user, name, action):
     if category in categories:
         recipe.category = category
         changed = True
-    servings = action.get("servings")
-    if isinstance(servings, int) and servings >= 1:
+    servings = _servings(action.get("servings")) or _servings_in(f"{ingredients}\n{steps}")
+    if servings is not None:
         recipe.servings = servings
         changed = True
-    minutes = _minutes(action.get("prep_time_minutes"))
+    minutes = _minutes(action.get("prep_time_minutes")) or (_minutes_in(steps) if steps else None)
     if minutes is not None:
         recipe.prep_time_minutes = minutes
         changed = True
@@ -562,9 +560,41 @@ def _update_recipe(household, _user, name, action):
 
 
 def _minutes(value):
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, float) and value.is_integer():
+        value = int(value)
+    if isinstance(value, str) and value.strip().isdigit():
+        value = int(value.strip())
     if isinstance(value, int) and value >= 1:
         return value
     return None
+
+
+def _servings(value):
+    return _minutes(value)
+
+
+def _servings_in(text):
+    folded = _fold(text or "")
+    match = re.search(r"(\d+)\s*(?:raciones|personas|comensales)", folded)
+    if match:
+        return int(match.group(1))
+    match = re.search(r"para\s+(\d+)", folded)
+    if match:
+        return int(match.group(1))
+    return None
+
+
+def _minutes_in(text):
+    folded = _fold(text or "")
+    stated = re.search(r"(?:tiempo total|en total|preparacion)\D{0,24}(\d+)", folded)
+    if stated:
+        return int(stated.group(1))
+    minutes = sum(int(number) for number in re.findall(r"(\d+)\s*minutos?", folded))
+    hours = sum(int(number) for number in re.findall(r"(\d+)\s*horas?", folded))
+    total = minutes + hours * 60
+    return total or None
 
 
 def _cadence(value):

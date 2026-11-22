@@ -573,12 +573,25 @@ class HouseChatTests(TestCase):
                 ],
             )
             response = self.client.post("/casa/", {"text": "Créame una receta nueva sugerida por ti"})
+            urlopen.return_value.__enter__.return_value.read.return_value = self._body(
+                reply="Te propongo arroz.",
+                actions=[
+                    {
+                        "kind": "create_recipe",
+                        "name": "Arroz con verduras",
+                        "category": "arroz",
+                        "ingredients": "200 g de arroz",
+                        "steps": "Sofreír 5 minutos.\nCocer 15 minutos.",
+                    }
+                ],
+            )
+            self.client.post("/casa/", {"text": "Otra receta sugerida"})
         sent = json.loads(urlopen.call_args.args[0].data.decode())
         system = sent["systemInstruction"]["parts"][0]["text"]
         question = sent["contents"][-1]["parts"][0]["text"]
         self.assertIn("receta nueva sugerida", system)
         self.assertIn("al menos seis", system)
-        self.assertIn("Los dos van siempre rellenos", system)
+        self.assertIn("Escribe esos dos números en la ficha", system)
         self.assertIn("Recetas a evitar: Lentejas", question)
         recipe = Recipe.objects.get(household=self.household, name="Crema de calabacín")
         self.assertEqual(recipe.ingredients, "2 calabacines\n1 cebolla")
@@ -586,6 +599,9 @@ class HouseChatTests(TestCase):
         self.assertEqual(recipe.servings, 4)
         self.assertEqual(recipe.prep_time_minutes, 35)
         self.assertEqual(response.json()["reply"]["receipts"], ["Recetario · Crema de calabacín"])
+        plain = Recipe.objects.get(household=self.household, name="Arroz con verduras")
+        self.assertEqual(plain.servings, 2)
+        self.assertEqual(plain.prep_time_minutes, 20)
 
     def _jpeg(self):
         buffer = BytesIO()
