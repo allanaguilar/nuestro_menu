@@ -157,7 +157,7 @@ class HouseChatView(HouseholdRequiredMixin, View):
         if not " ".join(text.split()):
             return JsonResponse({"error": "Escribe lo que quieres preguntar."}, status=400)
         try:
-            result = speak(request.household, request.user, text)
+            result = speak(request.household, request.user, text, request.FILES.get("foto"))
         except RecipeReadError as exc:
             return JsonResponse({"error": str(exc)}, status=502)
         return JsonResponse(result)

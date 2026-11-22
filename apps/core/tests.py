@@ -4,12 +4,16 @@ from io import BytesIO
 from unittest.mock import patch
 from urllib.error import HTTPError
 
+from PIL import Image
+
 from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.mail import send_mail
 from django.test import TestCase, override_settings
 from django.utils import timezone
 
-from apps.chores.models import Chore
+from apps.baby.models import BabyFood, BabyPlanEntry
+from apps.chores.models import Chore, ChorePhoto
 from apps.core.house_chat import house_snapshot
 from apps.core.mail import EmailDeliveryError
 from apps.core.models import HouseMessage
@@ -17,6 +21,7 @@ from apps.core.week import monday_of, weekday_short
 from apps.households.models import HouseholdMembership
 from apps.households.services import create_household_for_user
 from apps.meal_plans.models import MealPlan, MealPlanEntry
+from apps.preferences.models import RecipePreference
 from apps.recipes.models import Recipe
 from apps.shopping.models import Purchase, ShoppingItem, product_key
 from apps.shopping.services import clear_bought
@@ -375,6 +380,7 @@ class HouseChatTests(TestCase):
         page = self.client.get("/inicio/")
         self.assertContains(page, "Hablar con casa")
         self.assertContains(page, 'id="house-open"')
+        self.assertContains(page, 'id="house-foto"')
         self.assertNotContains(page, ">Casa</span>")
 
     def test_snapshot_includes_ingredients_without_naming_the_recipe(self):
@@ -493,6 +499,28 @@ class HouseChatTests(TestCase):
         self.assertFalse(Chore.objects.exclude(done_on=None).exists())
 
     @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_update_an_existing_recipe(self):
+        self.recipe.ingredients = "200 g de lentejas"
+        self.recipe.steps = "Cocer las lentejas."
+        self.recipe.save()
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = self._body(
+                reply="Lentejas actualizadas.",
+                actions=[
+                    {
+                        "kind": "update_recipe",
+                        "name": "Lentejas",
+                        "ingredients": "200 g de lentejas\n1 cebolla",
+                    }
+                ],
+            )
+            response = self.client.post("/casa/", {"text": "Añade cebolla a las lentejas"})
+        self.recipe.refresh_from_db()
+        self.assertEqual(self.recipe.ingredients, "200 g de lentejas\n1 cebolla")
+        self.assertEqual(self.recipe.steps, "Cocer las lentejas.")
+        self.assertEqual(response.json()["reply"]["receipts"], ["Recetario · Lentejas"])
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
     def test_can_create_a_recipe_for_someone_in_the_house(self):
         with patch("apps.recipes.ai.urlopen") as urlopen:
             urlopen.return_value.__enter__.return_value.read.return_value = self._body(
@@ -525,6 +553,221 @@ class HouseChatTests(TestCase):
             ["Recetario · Tortilla de patata", "Por hacer · Bajar la basura"],
         )
         self.assertFalse(Recipe.objects.filter(household=self.other_home, name="Tortilla de patata").exists())
+
+    def _jpeg(self):
+        buffer = BytesIO()
+        Image.new("RGB", (4, 4), "red").save(buffer, format="JPEG")
+        return SimpleUploadedFile("colada.jpg", buffer.getvalue(), content_type="image/jpeg")
+
+    def _ask(self, urlopen, reply, actions, text, **extra):
+        urlopen.return_value.__enter__.return_value.read.return_value = self._body(
+            reply=reply, actions=actions
+        )
+        return self.client.post("/casa/", {"text": text, **extra})
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_rename_a_shopping_item(self):
+        ShoppingItem.objects.create(household=self.household, name="Leche", position=1)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            response = self._ask(
+                urlopen,
+                "Leche pasa a ser leche entera.",
+                [{"kind": "rename_shopping", "name": "Leche", "new_name": "Leche entera"}],
+                "Cambia leche por leche entera",
+            )
+        self.assertEqual(ShoppingItem.objects.get(household=self.household).name, "Leche entera")
+        self.assertEqual(response.json()["reply"]["receipts"], ["Lista de compra · Leche entera"])
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_ambiguous_product_is_not_reordered(self):
+        first = ShoppingItem.objects.create(household=self.household, name="Pan de molde", position=1)
+        second = ShoppingItem.objects.create(household=self.household, name="Pan tostado", position=2)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            response = self._ask(
+                urlopen,
+                "Reordeno el pan.",
+                [{"kind": "reorder_shopping", "name": "", "order": "pan, huevos"}],
+                "Pon el pan primero",
+            )
+        self.assertIn("varios productos", response.json()["reply"]["body"])
+        self.assertEqual(response.json()["reply"]["receipts"], [])
+        first.refresh_from_db()
+        second.refresh_from_db()
+        self.assertEqual((first.position, second.position), (1, 2))
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_reorder_the_shopping_list(self):
+        milk = ShoppingItem.objects.create(household=self.household, name="Leche", position=1)
+        bread = ShoppingItem.objects.create(household=self.household, name="Pan", position=2)
+        eggs = ShoppingItem.objects.create(household=self.household, name="Huevos", position=3)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            response = self._ask(
+                urlopen,
+                "Huevos y pan primero.",
+                [{"kind": "reorder_shopping", "name": "", "order": "Huevos, Pan"}],
+                "Pon huevos y pan primero",
+            )
+        eggs.refresh_from_db()
+        bread.refresh_from_db()
+        milk.refresh_from_db()
+        self.assertEqual((eggs.position, bread.position, milk.position), (1, 2, 3))
+        self.assertEqual(response.json()["reply"]["receipts"], ["Lista de compra · orden"])
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_update_a_chore(self):
+        Chore.objects.create(household=self.household, title="Colada", cadence=Chore.Cadence.TODAY)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            response = self._ask(
+                urlopen,
+                "La colada pasa a ser semanal.",
+                [{"kind": "update_chore", "name": "Colada", "cadence": "semana"}],
+                "La colada que sea semanal",
+            )
+        chore = Chore.objects.get(title="Colada")
+        self.assertEqual(chore.cadence, Chore.Cadence.WEEKLY)
+        self.assertIsNone(chore.assignee)
+        self.assertEqual(response.json()["reply"]["receipts"], ["Por hacer · Colada"])
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_attach_a_photo_to_a_chore(self):
+        chore = Chore.objects.create(household=self.household, title="Colada", cadence=Chore.Cadence.TODAY)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            missing = self._ask(
+                urlopen,
+                "Guardo la foto.",
+                [{"kind": "add_chore_photo", "name": "Colada"}],
+                "Foto de la colada",
+            )
+            self.assertIn("Elige una foto", missing.json()["reply"]["body"])
+            self.assertEqual(ChorePhoto.objects.filter(chore=chore).count(), 0)
+            saved = self._ask(
+                urlopen,
+                "Foto guardada.",
+                [{"kind": "add_chore_photo", "name": "Colada"}],
+                "Foto de la colada",
+                foto=self._jpeg(),
+            )
+        self.assertEqual(missing.json()["reply"]["receipts"], [])
+        self.assertEqual(saved.json()["reply"]["receipts"], ["Por hacer · Colada"])
+        self.assertEqual(ChorePhoto.objects.filter(chore=chore).count(), 1)
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_archive_and_reactivate_a_recipe(self):
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            archived = self._ask(
+                urlopen,
+                "Lentejas archivadas.",
+                [{"kind": "archive_recipe", "name": "Lentejas"}],
+                "Archiva las lentejas",
+            )
+            self.recipe.refresh_from_db()
+            self.assertFalse(self.recipe.is_active)
+            self.assertEqual(archived.json()["reply"]["receipts"], ["Recetario · Lentejas"])
+            restored = self._ask(
+                urlopen,
+                "Lentejas otra vez en el recetario.",
+                [{"kind": "reactivate_recipe", "name": "Lentejas"}],
+                "Recupera las lentejas",
+            )
+        self.recipe.refresh_from_db()
+        self.assertTrue(self.recipe.is_active)
+        self.assertEqual(restored.json()["reply"]["receipts"], ["Recetario · Lentejas"])
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_ambiguous_recipe_is_not_archived(self):
+        Recipe.objects.create(household=self.household, name="Crema de calabacín", category=Recipe.Category.VERDURAS)
+        Recipe.objects.create(household=self.household, name="Crema de puerros", category=Recipe.Category.VERDURAS)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            response = self._ask(
+                urlopen,
+                "Archivo la crema.",
+                [{"kind": "archive_recipe", "name": "crema"}],
+                "Archiva la crema",
+            )
+        self.assertIn("varias recetas", response.json()["reply"]["body"])
+        self.assertEqual(response.json()["reply"]["receipts"], [])
+        self.assertFalse(Recipe.objects.filter(household=self.household, is_active=False).exists())
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_rate_and_clear_a_preference(self):
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            rated = self._ask(
+                urlopen,
+                "Lentejas con un cinco.",
+                [{"kind": "rate_recipe", "name": "Lentejas", "rating": 5}],
+                "Ponle un 5 a las lentejas",
+            )
+            cleared = self._ask(
+                urlopen,
+                "Lentejas ya no es favorita.",
+                [{"kind": "favorite", "name": "Lentejas"}, {"kind": "clear_preference", "name": "Lentejas"}],
+                "Quita las lentejas de favoritas",
+            )
+        pref = RecipePreference.objects.get(user=self.user, recipe=self.recipe)
+        self.assertEqual(pref.rating, 5)
+        self.assertFalse(pref.is_favorite)
+        self.assertFalse(pref.is_avoided)
+        self.assertEqual(rated.json()["reply"]["receipts"], ["Puntuación · Lentejas"])
+        self.assertEqual(cleared.json()["reply"]["receipts"], ["Favorita · Lentejas", "Preferencia · Lentejas"])
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_set_a_baby_meal(self):
+        BabyFood.objects.create(household=self.household, name="Plátano", texture=BabyFood.Texture.PUREE)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            response = self._ask(
+                urlopen,
+                "El martes merienda plátano.",
+                [{"kind": "set_baby_meal", "name": "Plátano", "day": "martes", "slot": "merienda"}],
+                "El martes el bebé merienda plátano",
+            )
+        tuesday = monday_of(timezone.localdate()) + timedelta(days=1)
+        entry = BabyPlanEntry.objects.get(plan__household=self.household, day=tuesday)
+        self.assertEqual(entry.food.name, "Plátano")
+        self.assertEqual(entry.slot, BabyPlanEntry.Slot.SNACK)
+        self.assertIn("Bebé ·", response.json()["reply"]["receipts"][0])
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_suggest_another_dish(self):
+        Recipe.objects.create(household=self.household, name="Sopa", category=Recipe.Category.VERDURAS)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            response = self._ask(
+                urlopen,
+                "Hoy cambia el plato.",
+                [{"kind": "suggest_dish", "name": "", "day": "hoy"}],
+                "Cambia el plato de hoy",
+            )
+        entry = MealPlanEntry.objects.get(meal_plan__household=self.household, day=timezone.localdate())
+        self.assertEqual(entry.recipe.name, "Sopa")
+        self.assertIn("Sopa", response.json()["reply"]["receipts"][0])
+
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_generate_menu_waits_for_confirmation(self):
+        plan = MealPlan.objects.get(household=self.household)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            refused = self._ask(
+                urlopen,
+                "Genero la semana.",
+                [{"kind": "generate_menu", "name": ""}],
+                "Genera el menú",
+            )
+        plan.refresh_from_db()
+        self.assertEqual(plan.status, MealPlan.Status.APPROVED)
+        self.assertEqual(plan.entries.count(), 1)
+        self.assertIn("aprobado", refused.json()["reply"]["body"])
+        self.assertEqual(refused.json()["reply"]["receipts"], [])
+        for index, name in enumerate(("Sopa", "Pasta", "Arroz", "Tortilla", "Pescado", "Ensalada"), start=1):
+            Recipe.objects.create(household=self.household, name=name, category=Recipe.Category.OTROS)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            accepted = self._ask(
+                urlopen,
+                "Sustituyo el menú.",
+                [{"kind": "generate_menu", "name": "", "confirm": "si"}],
+                "Sí, sustituye el menú",
+            )
+        plan.refresh_from_db()
+        self.assertEqual(plan.status, MealPlan.Status.DRAFT)
+        self.assertEqual(plan.entries.count(), 7)
+        self.assertEqual(accepted.json()["reply"]["receipts"], ["Menú · esta semana"])
 
     @override_settings(GEMINI_API_KEY="clave-de-prueba")
     def test_quota_error_changes_nothing(self):

@@ -1525,6 +1525,11 @@
         setHouseOpen(false);
       }
     });
+    document.addEventListener("change", function (event) {
+      if (!event.target || event.target.id !== "house-foto") return;
+      const mark = document.getElementById("house-photo");
+      if (mark) mark.classList.toggle("has-file", Boolean(event.target.files && event.target.files[0]));
+    });
     document.addEventListener("submit", function (event) {
       const form = event.target;
       if (!form || form.id !== "house-form") return;
@@ -1579,6 +1584,8 @@
     const body = new FormData();
     body.append("csrfmiddlewaretoken", csrfToken());
     body.append("text", text);
+    const photo = document.getElementById("house-foto");
+    if (photo && photo.files && photo.files[0]) body.append("foto", photo.files[0]);
     fetch(form.action || "/casa/", {
       method: "POST",
       body: body,
@@ -1594,6 +1601,11 @@
         return;
       }
       input.value = "";
+      if (photo) {
+        photo.value = "";
+        const mark = document.getElementById("house-photo");
+        if (mark) mark.classList.remove("has-file");
+      }
       addHouseMessage(result.data.user);
       addHouseMessage(result.data.reply);
     }).catch(function () {

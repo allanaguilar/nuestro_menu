@@ -3,25 +3,34 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from apps.baby.models import BabyPlanEntry
 from apps.baby.selectors import active_baby_foods, get_baby_plan
+from apps.baby.services import BabyPlanningError, set_baby_meal
 from apps.chores.models import Chore
 from apps.chores.selectors import open_chores
-from apps.chores.services import ChoreError, add_chore, set_chore_done
+from apps.chores.services import ChoreError, add_chore, save_chore_photo, set_chore_done, update_chore
 from apps.core.models import HouseMessage
 from apps.core.summary import summary_for
 from apps.core.week import monday_of, weekday_label, weekday_short
 from apps.households.selectors import list_members
 from apps.meal_plans.selectors import get_plan_for_week
-from apps.meal_plans.services.planning import PlanningError, change_entry
+from apps.meal_plans.services.generator import GeneratorError, generate_week_menu
+from apps.meal_plans.services.planning import PlanningError, change_entry, suggest_alternative
 from apps.preferences.models import RecipePreference
 from apps.preferences.services import upsert_preference
 from apps.recipes.ai import ask_model
 from apps.recipes.models import Recipe
 from apps.recipes.selectors import find_duplicates, list_active_recipes, recipes_for_household
-from apps.recipes.services import guess_recipe_category
+from apps.recipes.services import archive_recipe, guess_recipe_category, reactivate_recipe
 from apps.shopping.models import ShoppingItem
 from apps.shopping.selectors import person_label
-from apps.shopping.services import ShoppingError, add_recipe_ingredients, add_shopping_item
+from apps.shopping.services import (
+    ShoppingError,
+    add_recipe_ingredients,
+    add_shopping_item,
+    rename_shopping_item,
+    reorder_shopping_items,
+)
 
 _MONTHS = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 _HISTORY = 8
@@ -36,10 +45,21 @@ _SYSTEM = (
     "No inventes platos, recetas, tareas ni productos. "
     "Si falta un dato, dilo y deja actions vacío. "
     "actions solo cuando la persona pide un cambio. "
-    "kind puede ser add_shopping, mark_cart, unmark_cart, ingredients_to_list, "
-    "add_chore, complete_chore, reopen_chore, create_recipe, set_dish, favorite o avoid. "
+    "kind puede ser {kinds}. "
     "name es el producto, la tarea, la receta o el alimento. "
-    "day es hoy, mañana o un día de esta semana, y hace falta en set_dish. "
+    "update_recipe cambia una receta que ya existe. name es el nombre actual. "
+    "Incluye solo los campos que hay que cambiar: ingredients, steps, category, servings, notes o new_name. "
+    "No dejes vacío un campo que no te hayan pedido cambiar. "
+    "update_chore cambia una tarea. name es el título actual. "
+    "Solo incluye new_name, cadence o assignee si hay que cambiarlos. "
+    "day es hoy, mañana o un día de esta semana, y hace falta en set_dish, suggest_dish y set_baby_meal. "
+    "suggest_dish cambia ese día por otra receta; name puede ir vacío. "
+    "slot es comida o merienda, y hace falta en set_baby_meal. "
+    "rating es un número del 1 al 5 y hace falta en rate_recipe. "
+    "generate_menu arma el menú de esta semana y no lo aprueba. name puede ir vacío. "
+    "Si el menú ya está aprobado, no lo mandes hasta que la persona confirme; entonces confirm es si. "
+    "reorder_shopping pone en order los productos pendientes separados por comas. name puede ir vacío. "
+    "add_chore_photo guarda en la tarea name la foto que viene adjunta en este mensaje. "
     "cadence es hoy, dia, semana o cuando. assignee es el nombre de una persona de la casa, o vacío. "
     "Para create_recipe, ingredients y steps van en líneas separadas y category es una de: "
     "legumbres, carne, pescado, pasta, arroz, verduras, huevos, otros. "
@@ -64,6 +84,12 @@ _SCHEMA = {
                     "steps": {"type": "string"},
                     "servings": {"type": "integer", "nullable": True},
                     "day": {"type": "string"},
+                    "notes": {"type": "string"},
+                    "new_name": {"type": "string"},
+                    "rating": {"type": "integer", "nullable": True},
+                    "slot": {"type": "string"},
+                    "order": {"type": "string"},
+                    "confirm": {"type": "string"},
                 },
                 "required": ["kind", "name"],
             },
@@ -85,7 +111,7 @@ def message_payload(message):
     }
 
 
-def speak(household, user, text):
+def speak(household, user, text, photo=None):
     cleaned = " ".join((text or "").split())
     if not cleaned:
         raise ValueError("Escribe lo que quieres preguntar.")
@@ -105,6 +131,8 @@ def speak(household, user, text):
     for action in actions[:_MAX_ACTIONS]:
         if not isinstance(action, dict):
             continue
+        if photo is not None:
+            action["_upload"] = photo
         note, receipt = _apply(household, user, action)
         if note:
             notes.append(note)
@@ -198,7 +226,17 @@ def house_snapshot(household, user, question):
 
 _BROAD = ("en casa", "toda la casa", "todo lo", "informe", "cuentame", "que sabes", "que puedes")
 _PURCHASE_WORDS = ("compra", "compro", "comprado", "historial", "carro", "carrito", "veces")
-_RECIPE_WORDS = ("receta", "ingrediente", "paso", "detalle", "como se hace", "guardad")
+_RECIPE_WORDS = (
+    "receta",
+    "ingrediente",
+    "paso",
+    "detalle",
+    "como se hace",
+    "guardad",
+    "modifica",
+    "actualiza",
+    "corrige",
+)
 _BABY_WORDS = ("bebe", "pure", "merienda", "alimento del")
 _PREFERENCE_WORDS = ("favorit", "evitar", "puntuacion")
 _MEAL_WORDS = ("ultimas semanas", "mas com", "aprobad")
@@ -311,36 +349,17 @@ def _recipe_detail(recipe):
 
 def _apply(household, user, action):
     kind = str(action.get("kind") or "").strip()
+    handler = _ACTIONS.get(kind)
+    if handler is None:
+        return "", ""
     name = " ".join(str(action.get("name") or "").split())
     try:
-        if kind == "add_shopping":
-            return _add_shopping(household, user, name)
-        if kind == "mark_cart":
-            return _set_cart(household, name, True)
-        if kind == "unmark_cart":
-            return _set_cart(household, name, False)
-        if kind == "ingredients_to_list":
-            return _ingredients_to_list(household, user, name)
-        if kind == "add_chore":
-            return _add_chore(household, user, name, action)
-        if kind == "complete_chore":
-            return _complete_chore(household, name, done=True)
-        if kind == "reopen_chore":
-            return _complete_chore(household, name, done=False)
-        if kind == "create_recipe":
-            return _create_recipe(household, name, action)
-        if kind == "set_dish":
-            return _set_dish(household, name, action)
-        if kind == "favorite":
-            return _set_preference(household, user, name, favorite=True)
-        if kind == "avoid":
-            return _set_preference(household, user, name, favorite=False)
-    except (ShoppingError, ChoreError, HouseActionError, PlanningError) as exc:
+        return handler(household, user, name, action)
+    except (ShoppingError, ChoreError, HouseActionError, PlanningError, BabyPlanningError, GeneratorError) as exc:
         return str(exc), ""
-    return "", ""
 
 
-def _add_shopping(household, user, name):
+def _add_shopping(household, user, name, _action):
     if not name:
         raise HouseActionError("Escribe lo que falta.")
     item = add_shopping_item(household, name[:120], user)
@@ -405,7 +424,7 @@ def _set_cart(household, name, done):
     return "", f"{label} · {chosen[0].name}"
 
 
-def _ingredients_to_list(household, user, name):
+def _ingredients_to_list(household, user, name, _action):
     recipe = _one_recipe(household, name)
     added, _skipped = add_recipe_ingredients(household, recipe, user)
     if not added:
@@ -413,7 +432,7 @@ def _ingredients_to_list(household, user, name):
     return "", f"Lista de compra · {added} de {recipe.name}"
 
 
-def _set_dish(household, name, action):
+def _set_dish(household, _user, name, action):
     recipe = _one_recipe(household, name)
     today = timezone.localdate()
     day = _parse_day(str(action.get("day") or ""), today)
@@ -463,7 +482,7 @@ def _parse_day(value, today):
     raise HouseActionError("Di el día: hoy, mañana o un día de esta semana.")
 
 
-def _create_recipe(household, name, action):
+def _create_recipe(household, _user, name, action):
     if not name:
         raise HouseActionError("Falta el nombre de la receta.")
     ingredients = str(action.get("ingredients") or "").strip()
@@ -487,6 +506,42 @@ def _create_recipe(household, name, action):
         ingredients=ingredients,
         steps=steps,
     )
+    return "", f"Recetario · {recipe.name}"
+
+
+def _update_recipe(household, _user, name, action):
+    recipe = _one_recipe(household, name)
+    changed = False
+    new_name = " ".join(str(action.get("new_name") or "").split())
+    if new_name and _fold(new_name) != _fold(recipe.name):
+        if find_duplicates(household, new_name, exclude_id=recipe.id).exists():
+            raise HouseActionError("Ya hay una receta con ese nombre.")
+        recipe.name = new_name[:180]
+        changed = True
+    ingredients = str(action.get("ingredients") or "").strip()
+    if ingredients:
+        recipe.ingredients = ingredients
+        changed = True
+    steps = str(action.get("steps") or "").strip()
+    if steps:
+        recipe.steps = steps
+        changed = True
+    notes = str(action.get("notes") or "").strip()
+    if notes:
+        recipe.notes = notes
+        changed = True
+    categories = {value for value, _label in Recipe.Category.choices}
+    category = str(action.get("category") or "")
+    if category in categories:
+        recipe.category = category
+        changed = True
+    servings = action.get("servings")
+    if isinstance(servings, int) and servings >= 1:
+        recipe.servings = servings
+        changed = True
+    if not changed:
+        raise HouseActionError("Di qué hay que cambiar de la receta.")
+    recipe.save()
     return "", f"Recetario · {recipe.name}"
 
 
@@ -522,6 +577,228 @@ def _assignee(household, user, label):
     if len(partial) == 1:
         return partial[0]
     raise HouseActionError("Esa persona no está en el hogar.")
+
+
+def _rename_shopping(household, _user, name, action):
+    item = _one_item(household, name)
+    new_name = " ".join(str(action.get("new_name") or "").split())
+    rename_shopping_item(item, new_name)
+    return "", f"Lista de compra · {item.name}"
+
+
+def _reorder_shopping(household, _user, _name, action):
+    raw = str(action.get("order") or "").replace("\n", ",")
+    labels = [" ".join(part.split()) for part in raw.split(",") if part.strip()]
+    if not labels:
+        raise HouseActionError("Di el orden de la lista.")
+    pending = list(ShoppingItem.objects.filter(household=household, done=False))
+    ordered = []
+    used = set()
+    for label in labels:
+        remaining = [item for item in pending if item.pk not in used]
+        chosen = _match_name(remaining, label, lambda item: item.name)
+        if not chosen:
+            raise HouseActionError("No encuentro ese producto.")
+        if len(chosen) > 1:
+            titles = " y ".join(item.name for item in chosen[:4])
+            raise HouseActionError(f"Hay varios productos parecidos: {titles}.")
+        ordered.append(str(chosen[0].pk))
+        used.add(chosen[0].pk)
+    reorder_shopping_items(household, ordered)
+    return "", "Lista de compra · orden"
+
+
+def _update_chore(household, user, name, action):
+    chore = _one_chore(household, name)
+    title = " ".join(str(action.get("new_name") or "").split())
+    cadence_text = str(action.get("cadence") or "").strip()
+    assignee_text = str(action.get("assignee") or "").strip()
+    if not title and not cadence_text and not assignee_text:
+        raise HouseActionError("Di qué hay que cambiar de la tarea.")
+    update_chore(
+        chore,
+        (title or chore.title)[:80],
+        _cadence(cadence_text) if cadence_text else chore.cadence,
+        _assignee(household, user, assignee_text) if assignee_text else chore.assignee,
+        timezone.localdate(),
+    )
+    return "", f"Por hacer · {chore.title}"
+
+
+def _add_chore_photo(household, _user, name, action):
+    upload = action.get("_upload")
+    if upload is None or not getattr(upload, "size", 0):
+        raise HouseActionError("Elige una foto.")
+    if hasattr(upload, "seek"):
+        upload.seek(0)
+    chore = _one_chore(household, name)
+    save_chore_photo(chore, upload)
+    return "", f"Por hacer · {chore.title}"
+
+
+def _archive_recipe(household, _user, name, _action):
+    recipe = _one_recipe(household, name)
+    archive_recipe(recipe)
+    return "", f"Recetario · {recipe.name}"
+
+
+def _reactivate_recipe(household, _user, name, _action):
+    recipe = _one_inactive_recipe(household, name)
+    reactivate_recipe(recipe)
+    return "", f"Recetario · {recipe.name}"
+
+
+def _rate_recipe(household, user, name, action):
+    recipe = _one_recipe(household, name)
+    rating = action.get("rating")
+    if not isinstance(rating, int) or rating < 1 or rating > 5:
+        raise HouseActionError("La puntuación va del 1 al 5.")
+    upsert_preference(user, recipe, rating=rating)
+    return "", f"Puntuación · {recipe.name}"
+
+
+def _clear_preference(household, user, name, _action):
+    recipe = _one_recipe(household, name)
+    upsert_preference(user, recipe, is_favorite=False, is_avoided=False)
+    return "", f"Preferencia · {recipe.name}"
+
+
+def _set_baby_meal(household, _user, name, action):
+    food = _one_food(household, name)
+    today = timezone.localdate()
+    day = _parse_day(str(action.get("day") or ""), today)
+    entry = set_baby_meal(household, monday_of(day), day, _slot(action.get("slot")), food)
+    return "", f"Bebé · {weekday_short(day).lower()} {day.day}: {entry.food.name}"
+
+
+def _suggest_dish(household, _user, _name, action):
+    today = timezone.localdate()
+    day = _parse_day(str(action.get("day") or ""), today)
+    recipe = suggest_alternative(household, monday_of(day), day)
+    change_entry(household, monday_of(day), day, recipe)
+    return "", f"Menú · {weekday_short(day).lower()} {day.day}: {recipe.name}"
+
+
+def _generate_menu(household, user, _name, action):
+    confirmed = _fold(str(action.get("confirm") or "")) == "si"
+    generate_week_menu(household, timezone.localdate(), user, confirm_replace=confirmed)
+    return "", "Menú · esta semana"
+
+
+def _one_item(household, name):
+    if not name:
+        raise HouseActionError("Di qué producto es.")
+    items = list(ShoppingItem.objects.filter(household=household))
+    chosen = _match_name(items, name, lambda item: item.name)
+    if not chosen:
+        raise HouseActionError("No encuentro ese producto.")
+    if len(chosen) > 1:
+        titles = " y ".join(item.name for item in chosen[:4])
+        raise HouseActionError(f"Hay varios productos parecidos: {titles}.")
+    return chosen[0]
+
+
+def _one_chore(household, name):
+    if not name:
+        raise HouseActionError("Di qué tarea es.")
+    today = timezone.localdate()
+    board = open_chores(household, today)
+    chosen = _match_name(board["hoy"] + board["cuando"], name, lambda chore: chore.title)
+    if not chosen:
+        raise HouseActionError("No encuentro esa tarea.")
+    if len(chosen) > 1:
+        titles = " y ".join(chore.title for chore in chosen[:4])
+        raise HouseActionError(f"Hay varias tareas parecidas: {titles}.")
+    return chosen[0]
+
+
+def _one_inactive_recipe(household, name):
+    if not name:
+        raise HouseActionError("Di el nombre de la receta.")
+    recipes = list(recipes_for_household(household).filter(is_active=False))
+    chosen = _match_name(recipes, name, lambda recipe: recipe.name)
+    if not chosen:
+        raise HouseActionError("No encuentro esa receta.")
+    if len(chosen) > 1:
+        titles = " y ".join(recipe.name for recipe in chosen[:4])
+        raise HouseActionError(f"Hay varias recetas parecidas: {titles}.")
+    return chosen[0]
+
+
+def _one_food(household, name):
+    if not name:
+        raise HouseActionError("Di el alimento.")
+    foods = list(active_baby_foods(household))
+    chosen = _match_name(foods, name, lambda food: food.name)
+    if not chosen:
+        raise HouseActionError("No encuentro ese alimento.")
+    if len(chosen) > 1:
+        titles = " y ".join(food.name for food in chosen[:4])
+        raise HouseActionError(f"Hay varios alimentos parecidos: {titles}.")
+    return chosen[0]
+
+
+def _slot(value):
+    phrase = _fold(str(value or ""))
+    if "merienda" in phrase:
+        return BabyPlanEntry.Slot.SNACK
+    if "comida" in phrase:
+        return BabyPlanEntry.Slot.LUNCH
+    raise HouseActionError("Di si es comida o merienda.")
+
+
+def _mark_cart(household, _user, name, _action):
+    return _set_cart(household, name, True)
+
+
+def _unmark_cart(household, _user, name, _action):
+    return _set_cart(household, name, False)
+
+
+def _finish_chore(household, _user, name, _action):
+    return _complete_chore(household, name, True)
+
+
+def _reopen_chore(household, _user, name, _action):
+    return _complete_chore(household, name, False)
+
+
+def _favorite(household, user, name, _action):
+    return _set_preference(household, user, name, True)
+
+
+def _avoid(household, user, name, _action):
+    return _set_preference(household, user, name, False)
+
+
+_ACTIONS = {
+    "add_shopping": _add_shopping,
+    "mark_cart": _mark_cart,
+    "unmark_cart": _unmark_cart,
+    "ingredients_to_list": _ingredients_to_list,
+    "add_chore": _add_chore,
+    "complete_chore": _finish_chore,
+    "reopen_chore": _reopen_chore,
+    "rename_shopping": _rename_shopping,
+    "reorder_shopping": _reorder_shopping,
+    "create_recipe": _create_recipe,
+    "update_recipe": _update_recipe,
+    "archive_recipe": _archive_recipe,
+    "reactivate_recipe": _reactivate_recipe,
+    "update_chore": _update_chore,
+    "add_chore_photo": _add_chore_photo,
+    "set_dish": _set_dish,
+    "suggest_dish": _suggest_dish,
+    "generate_menu": _generate_menu,
+    "set_baby_meal": _set_baby_meal,
+    "favorite": _favorite,
+    "avoid": _avoid,
+    "rate_recipe": _rate_recipe,
+    "clear_preference": _clear_preference,
+}
+
+_SYSTEM = _SYSTEM.format(kinds=", ".join(list(_ACTIONS)[:-1]) + " o " + list(_ACTIONS)[-1])
+_SCHEMA["properties"]["actions"]["items"]["properties"]["kind"]["enum"] = list(_ACTIONS)
 
 
 def _fold(value):
