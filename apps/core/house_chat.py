@@ -43,12 +43,21 @@ _SYSTEM = (
     "y solo el detalle que encaja con la pregunta. "
     "Si un mensaje anterior dijo que faltaba un dato, vuelve a mirar los bloques de este mensaje. "
     "No inventes platos, recetas, tareas ni productos. "
+    "La excepción es cuando piden una receta nueva sugerida por ti: "
+    "invéntala con create_recipe, distinta de las recetas de casa y sin usar las que hay que evitar. "
+    "ingredients lleva cantidades, una por línea. "
+    "steps lleva el procedimiento de verdad, un paso por línea, al menos seis, "
+    "y cada paso dice el tiempo o el fuego, por ejemplo 8 minutos a fuego medio. "
+    "servings son las raciones y prep_time_minutes el tiempo de preparación en minutos. "
+    "Los dos van siempre rellenos, con un número, nunca vacíos. "
+    "No la resumas en tres o cuatro líneas. La respuesta puede ser breve; el detalle va en steps. "
+    "Si piden más detalle de una receta que ya existe, update_recipe sustituye steps con ese mismo nivel. "
     "Si falta un dato, dilo y deja actions vacío. "
     "actions solo cuando la persona pide un cambio. "
     "kind puede ser {kinds}. "
     "name es el producto, la tarea, la receta o el alimento. "
     "update_recipe cambia una receta que ya existe. name es el nombre actual. "
-    "Incluye solo los campos que hay que cambiar: ingredients, steps, category, servings, notes o new_name. "
+    "Incluye solo los campos que hay que cambiar: ingredients, steps, category, servings, prep_time_minutes, notes o new_name. "
     "No dejes vacío un campo que no te hayan pedido cambiar. "
     "update_chore cambia una tarea. name es el título actual. "
     "Solo incluye new_name, cadence o assignee si hay que cambiarlos. "
@@ -83,6 +92,7 @@ _SCHEMA = {
                     "ingredients": {"type": "string"},
                     "steps": {"type": "string"},
                     "servings": {"type": "integer", "nullable": True},
+                    "prep_time_minutes": {"type": "integer", "nullable": True},
                     "day": {"type": "string"},
                     "notes": {"type": "string"},
                     "new_name": {"type": "string"},
@@ -239,6 +249,7 @@ _RECIPE_WORDS = (
 )
 _BABY_WORDS = ("bebe", "pure", "merienda", "alimento del")
 _PREFERENCE_WORDS = ("favorit", "evitar", "puntuacion")
+_SUGGEST_WORDS = ("suger", "invent", "propon")
 _MEAL_WORDS = ("ultimas semanas", "mas com", "aprobad")
 
 
@@ -253,7 +264,7 @@ def _topics(question):
         topics.add("recipes")
     if any(word in folded for word in _BABY_WORDS):
         topics.add("baby")
-    if any(word in folded for word in _PREFERENCE_WORDS):
+    if any(word in folded for word in _PREFERENCE_WORDS) or any(word in folded for word in _SUGGEST_WORDS):
         topics.add("preferences")
     if any(word in folded for word in _MEAL_WORDS):
         topics.add("meals")
@@ -503,6 +514,7 @@ def _create_recipe(household, _user, name, action):
         name=name[:180],
         category=category,
         servings=servings,
+        prep_time_minutes=_minutes(action.get("prep_time_minutes")),
         ingredients=ingredients,
         steps=steps,
     )
@@ -539,10 +551,20 @@ def _update_recipe(household, _user, name, action):
     if isinstance(servings, int) and servings >= 1:
         recipe.servings = servings
         changed = True
+    minutes = _minutes(action.get("prep_time_minutes"))
+    if minutes is not None:
+        recipe.prep_time_minutes = minutes
+        changed = True
     if not changed:
         raise HouseActionError("Di qué hay que cambiar de la receta.")
     recipe.save()
     return "", f"Recetario · {recipe.name}"
+
+
+def _minutes(value):
+    if isinstance(value, int) and value >= 1:
+        return value
+    return None
 
 
 def _cadence(value):

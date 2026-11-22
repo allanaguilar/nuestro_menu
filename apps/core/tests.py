@@ -554,6 +554,39 @@ class HouseChatTests(TestCase):
         )
         self.assertFalse(Recipe.objects.filter(household=self.other_home, name="Tortilla de patata").exists())
 
+    @override_settings(GEMINI_API_KEY="clave-de-prueba")
+    def test_can_save_a_recipe_suggested_by_the_bot(self):
+        RecipePreference.objects.create(user=self.user, recipe=self.recipe, is_avoided=True)
+        with patch("apps.recipes.ai.urlopen") as urlopen:
+            urlopen.return_value.__enter__.return_value.read.return_value = self._body(
+                reply="Te propongo crema de calabacín.",
+                actions=[
+                    {
+                        "kind": "create_recipe",
+                        "name": "Crema de calabacín",
+                        "category": "verduras",
+                        "ingredients": "2 calabacines\n1 cebolla",
+                        "steps": "\n".join(f"Paso {number}, 5 minutos." for number in range(1, 7)),
+                        "servings": 4,
+                        "prep_time_minutes": 35,
+                    }
+                ],
+            )
+            response = self.client.post("/casa/", {"text": "Créame una receta nueva sugerida por ti"})
+        sent = json.loads(urlopen.call_args.args[0].data.decode())
+        system = sent["systemInstruction"]["parts"][0]["text"]
+        question = sent["contents"][-1]["parts"][0]["text"]
+        self.assertIn("receta nueva sugerida", system)
+        self.assertIn("al menos seis", system)
+        self.assertIn("Los dos van siempre rellenos", system)
+        self.assertIn("Recetas a evitar: Lentejas", question)
+        recipe = Recipe.objects.get(household=self.household, name="Crema de calabacín")
+        self.assertEqual(recipe.ingredients, "2 calabacines\n1 cebolla")
+        self.assertEqual(len(recipe.step_lines), 6)
+        self.assertEqual(recipe.servings, 4)
+        self.assertEqual(recipe.prep_time_minutes, 35)
+        self.assertEqual(response.json()["reply"]["receipts"], ["Recetario · Crema de calabacín"])
+
     def _jpeg(self):
         buffer = BytesIO()
         Image.new("RGB", (4, 4), "red").save(buffer, format="JPEG")
