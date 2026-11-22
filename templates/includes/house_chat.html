@@ -14,6 +14,13 @@
   <p class="house-error" id="house-error" hidden></p>
   <form class="house-compose" id="house-form" hx-boost="false" action="{% url 'core:house-chat' %}" method="post">
     {% csrf_token %}
+    <p class="house-file" id="house-file" hidden>
+      <img id="house-file-preview" alt="">
+      <span id="house-file-name"></span>
+      <button type="button" class="house-file-clear" id="house-file-clear" aria-label="Quitar foto">
+        {% include "includes/icon.html" with name="trash" %}
+      </button>
+    </p>
     <label class="house-photo" id="house-photo" for="house-foto">
       {% include "includes/icon.html" with name="camera" %}
       <span class="sr-only">Adjuntar foto</span>
@@ -21,6 +28,9 @@
     <input id="house-foto" class="sr-only" name="foto" type="file" accept="image/*">
     <label class="sr-only" for="house-msg">Mensaje</label>
     <input id="house-msg" name="text" type="text" maxlength="1000" placeholder="Añade pan a la compra" autocomplete="off">
-    <button type="submit">Enviar</button>
+    <button class="house-send" type="submit">
+      {% include "includes/icon.html" with name="send" %}
+      <span class="sr-only">Enviar</span>
+    </button>
   </form>
 </section>

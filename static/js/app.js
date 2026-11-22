@@ -1527,8 +1527,17 @@
     });
     document.addEventListener("change", function (event) {
       if (!event.target || event.target.id !== "house-foto") return;
-      const mark = document.getElementById("house-photo");
-      if (mark) mark.classList.toggle("has-file", Boolean(event.target.files && event.target.files[0]));
+      const file = event.target.files && event.target.files[0];
+      if (file) showHouseFile(file);
+      else clearHouseFile();
+    });
+    document.addEventListener("click", function (event) {
+      const clear = event.target.closest && event.target.closest("#house-file-clear");
+      if (!clear) return;
+      event.preventDefault();
+      const photo = document.getElementById("house-foto");
+      if (photo) photo.value = "";
+      clearHouseFile();
     });
     document.addEventListener("submit", function (event) {
       const form = event.target;
@@ -1571,6 +1580,37 @@
       });
   }
 
+  function showHouseFile(file) {
+    const row = document.getElementById("house-file");
+    const name = document.getElementById("house-file-name");
+    const preview = document.getElementById("house-file-preview");
+    const mark = document.getElementById("house-photo");
+    if (!row || !name || !preview) return;
+    if (preview.dataset.url) URL.revokeObjectURL(preview.dataset.url);
+    const url = URL.createObjectURL(file);
+    preview.dataset.url = url;
+    preview.src = url;
+    preview.alt = file.name;
+    name.textContent = file.name;
+    row.hidden = false;
+    if (mark) mark.classList.add("has-file");
+  }
+
+  function clearHouseFile() {
+    const row = document.getElementById("house-file");
+    const name = document.getElementById("house-file-name");
+    const preview = document.getElementById("house-file-preview");
+    const mark = document.getElementById("house-photo");
+    if (preview && preview.dataset.url) {
+      URL.revokeObjectURL(preview.dataset.url);
+      delete preview.dataset.url;
+      preview.removeAttribute("src");
+    }
+    if (name) name.textContent = "";
+    if (row) row.hidden = true;
+    if (mark) mark.classList.remove("has-file");
+  }
+
   function sendHouse(form) {
     const input = document.getElementById("house-msg");
     const text = input ? input.value.trim() : "";
@@ -1601,11 +1641,8 @@
         return;
       }
       input.value = "";
-      if (photo) {
-        photo.value = "";
-        const mark = document.getElementById("house-photo");
-        if (mark) mark.classList.remove("has-file");
-      }
+      if (photo) photo.value = "";
+      clearHouseFile();
       addHouseMessage(result.data.user);
       addHouseMessage(result.data.reply);
     }).catch(function () {
